@@ -1,0 +1,10 @@
+/bin
+/build
+/.gradle
+/targets
+/.project
+/.settings
+/test-output
+/source/c/build
+source/c/hdf5*tar*
+source/c/CMake*zip

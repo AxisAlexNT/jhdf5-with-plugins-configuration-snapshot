@@ -1,0 +1,19 @@
+1. Install OpenJDK 1.8:
+   # yum install java-1.8.0-openjdk-headless.x86_64 java-1.8.0-openjdk-devel.x86_64
+
+2. Install devtoolset-7 from Scientific Linux:
+   # yum install centos-release-scl
+   # yum install devtoolset-7
+
+4. As build-user, enable devtoolset-7
+   $ scl enable devtoolset-7 bash
+
+5. Build HDF5:
+   $ ./compile_hdf5_linux_amd64.sh
+
+6. Build JHDF5:
+   $ ./compile_linux_amd64.sh
+
+7. If the build runs successful, you will find the file build/libjhdf5.so
+
+8. Copy build/libjhdf5.so to the Linux workspace folder libs/native/jhdf5/amd64-Linux/libjhdf5.so

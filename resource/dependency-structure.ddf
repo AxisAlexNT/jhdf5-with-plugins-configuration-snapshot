@@ -1,0 +1,14 @@
+{package} = ch.systemsx.cisd.hdf5
+{package2} = ncsa.hdf.hdf5lib
+
+[ncsa-hdf] = ${package2}.*
+[hdf5-cleanup] = ${package}.cleanup.*
+[hdf5-tools] = ${package}.tools.*
+[hdf5-core] = ${package}.* excluding [hdf5-tools] [hdf5-cleanup]
+check sets [ncsa-hdf] [hdf5-cleanup] [hdf5-tools] [hdf5-core]
+
+layer layer0 = [hdf5-cleanup] [ncsa-hdf]
+layer layer1 = [hdf5-core]
+layer layer2 = [hdf5-tools]
+
+check layeringOf layer0 layer1 layer2

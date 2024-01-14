@@ -1,0 +1,227 @@
+apply from: 'javaproject.gradle'
+
+group='sis'
+
+dependencies {
+    compile fileTree(dir: 'libs/prod', include: '*.jar')
+    testCompile fileTree(dir: 'libs/test', include: '*.jar')
+}
+
+tasks.withType(Test) {
+    systemProperty "java.library.path", "libs/native/jhdf5/amd64-Linux:libs/native/jhdf5/amd64-Linux:libs/native/jhdf5/x86_64-Mac OS X:libs/native/jhdf5/aarch64-Mac OS X:libs/native/jhdf5/x86_64-Mac OS X"
+}
+
+def execute(command, arguments) {
+    new ByteArrayOutputStream().withStream { os ->
+        print "execute: ${command}"
+        arguments.collect({print " ${it}"})
+        println ''
+        def result = exec {
+            executable = command
+            args = arguments
+            standardOutput = os
+        }
+        return os.toString().split('\n')
+    }
+}
+
+task processDistFiles( type: Copy) {
+    into "$buildDir/output/dist"
+
+    from ("dist") {
+        exclude 'doc/JHDF5.odt'
+    }
+
+    from ("dist") {
+        include 'doc/JHDF5.odt'
+        rename { "JHDF5-${version}.odt" }
+    }
+
+   /*
+   doLast {
+        execute('lowriter', [ '--headless', '--convert-to', 'pdf', '--outdir', "$buildDir/output/dist/doc", "$buildDir/output/dist/doc/JHDF5-${version}.odt" ])
+   }
+   */
+
+}
+
+jar {
+    baseName "${project.group}-jhdf5"
+    exclude '**/HDF5ArchiverMain*.class'
+    from('targets/dist') {
+        include 'BUILD*INFO'
+    }
+
+    from ("libs/") {
+        include 'native/jhdf5/**/**/*'
+    }
+
+    manifest {
+        attributes 'Main-Class': 'ch.systemsx.cisd.base.BuildAndEnvironmentInfo'
+        attributes 'Class-Path': configurations.runtime.filter { !(it.getName().contains("-sources") || it.getName().startsWith("cisd-args4j")) }.collect { it.getName() }.join(' ')
+    }
+}
+
+task h5arCLIJar(type: Jar, dependsOn: [jar]) {
+    archiveName "${project.group}-jhdf5-h5ar-cli-${version}.jar"
+    from files(sourceSets.main.output.classesDir) {
+        include '**/HDF5ArchiverMain*.class'
+    }
+    from('targets/dist') {
+        include 'BUILD*INFO'
+    }
+
+    manifest {
+        attributes 'Main-Class': 'ch.systemsx.cisd.hdf5.h5ar.HDF5ArchiverMain'
+        attributes 'Class-Path': "${project.group}-jhdf5-${version}.jar " + configurations.runtime.filter { !it.getName().contains("-sources") }.collect { it.getName() }.join(' ') 
+    }
+}
+
+sourcesJar {
+    baseName "${project.group}-jhdf5"
+
+    from ("targets/dist") {
+        include "BUILD-jhdf5.INFO"
+    }
+
+}
+
+task myJavadoc(type: Javadoc, dependsOn: [compileJava]) {
+	source = [ sourceSets.main.allJava, "base-sources" ]
+	classpath = files(sourceSets.main.output.classesDir) + fileTree(dir: 'libs/prod', include: '*.jar') + files("libs/build/restrictions-1.0.2.jar")
+	options.memberLevel = JavadocMemberLevel.PUBLIC
+	options.overview = "overview.html"
+	include "ch/systemsx/cisd/hdf5/**"
+	include "ch/ethz/sis/hdf5/**"
+	include "hdf/hdf5lib/exceptions/**"
+	exclude "ch/systemsx/cisd/hdf5/hdf5lib/**"
+	exclude "ch/ethz/sis/hdf5/hdf5lib/**"
+	exclude "ch/systemsx/cisd/hdf5/cleanup/**"
+	exclude "ch/systemsx/cisd/hdf5/BitSetConversionUtils.java"
+	exclude "ch/systemsx/cisd/hdf5/MatrixUtils.java"
+	exclude "ch/systemsx/cisd/hdf5/StringUtils.java"
+	exclude "ch/systemsx/cisd/hdf5/PaddingUtils.java"
+	exclude "ch/systemsx/cisd/hdf5/ReflectionUtils.java"
+}
+
+task javadocJar(type: Jar, dependsOn: [myJavadoc, processDistFiles]) {
+    archiveName "${project.group}-jhdf5-javadoc-${project.version}.jar"
+    from javadoc.destinationDir
+    from ("sourceExamples/java") {
+        include '**/*'
+    }
+    from ("$buildDir/output/dist/doc") {
+        include "JHDF5-${version}.pdf"
+        rename { "JHDF5.pdf" }
+    }
+
+    from ("targets/dist") {
+        include "BUILD-jhdf5.INFO"
+    }
+
+}
+
+task exampleJar(type: Jar) {
+    baseName "${project.group}-jhdf5-examples-sources"
+
+    from ("sourceExamples/java") {
+        include '**/*'
+    }
+    
+    from ("targets/dist") {
+        include "BUILD-jhdf5.INFO"
+    }
+
+}
+
+task distributionZip(type: Zip, dependsOn: [jar, h5arCLIJar, javadocJar, sourcesJar, exampleJar, processDistFiles]) {
+    baseName "${project.group}-jhdf5"
+
+    from('targets/dist') {
+        into "${project.group}-jhdf5"
+        include 'version.txt'
+        include 'build.txt'
+    }
+
+    from ("$buildDir/output/dist") {
+        into "${project.group}-jhdf5"
+        include '*'
+    }
+
+    from ("$buildDir/output/dist") {
+        into "${project.group}-jhdf5"
+        include 'bin/*'
+    }
+
+    from ("$buildDir/output/dist") {
+        into "${project.group}-jhdf5"
+        include 'doc/*'
+    }
+
+    from (javadocJar.archivePath) {
+        into "${project.group}-jhdf5/doc"
+    }
+   
+    from (exampleJar.archivePath) {
+        into "${project.group}-jhdf5/doc"
+    }
+
+    from (configurations.runtime) {
+        include '*-sources*'
+        into "${project.group}-jhdf5/sources"
+    }
+
+    from (sourcesJar.archivePath) {
+        into "${project.group}-jhdf5/sources"
+    }
+
+    from (jar.archivePath) {
+        into "${project.group}-jhdf5/lib"
+    }
+
+    from (h5arCLIJar.archivePath) {
+        into "${project.group}-jhdf5/lib"
+    }
+
+    from (configurations.runtime) {
+        exclude '*restriction*'
+        exclude '*bcel*'
+        exclude '*-sources*'
+        into "${project.group}-jhdf5/lib"
+    }
+    
+    from ("libs") {
+        into "${project.group}-jhdf5/lib"
+        include 'native/**'
+    }
+
+    from (configurations.runtime.collect {zipTree(it)}) {
+        into "${project.group}-jhdf5/lib"
+        include 'native/**/*'
+    }
+
+}
+
+if (project == project.rootProject)
+{
+    publishing {
+        publications {
+            artifacts(IvyPublication) {
+                module "${project.group}-jhdf5"
+                revision project.revisionForPublication
+                from components.java
+                artifact(sourcesJar) {
+                    type = "source"
+                }
+                descriptor {
+                    withXml {
+                        asNode().dependencies.dependency.find { it.@org == 'rinn' }.replaceNode {}
+                    }
+                }
+            }
+        }
+    }
+}
+
+build.dependsOn distributionZip
+

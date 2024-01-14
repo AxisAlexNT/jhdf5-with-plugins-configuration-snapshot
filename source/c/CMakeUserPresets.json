@@ -1,0 +1,261 @@
+{
+  "version": 6,
+  "include": [
+    "config/cmake-presets/hidden-presets.json"
+  ],
+  "configurePresets": [
+    {
+      "name": "hict-base-tgz",
+      "hidden": true,
+      "inherits": "ci-base",
+      "generator": "Unix Makefiles",
+      "cacheVariables": {
+        "HDF5_ALLOW_EXTERNAL_SUPPORT": "TGZ",
+        "TGZPATH": {"type": "STRING", "value": "${sourceParentDir}/"}
+      }
+    },
+    {
+      "name": "hict-StdCompression",
+      "hidden": true,
+      "inherits": ["hict-base-tgz", "ci-CompressionVars"],
+      "generator": "Unix Makefiles",
+      "cacheVariables": {
+        "HDF5_PACKAGE_EXTLIBS": "ON",
+        "ZLIB_USE_LOCALCONTENT": "ON",
+	"HDF5_ENABLE_ZLIB_SUPPORT": "ON",
+        "LIBAEC_USE_LOCALCONTENT": "OFF",
+        "HDF5_ENABLE_SZIP_SUPPORT": "OFF",
+        "HDF5_ENABLE_SZIP_ENCODING": "OFF"
+      }
+    },
+    {
+      "name": "hict-StdPlugins",
+      "hidden": true,
+      "generator": "Unix Makefiles",
+      "inherits": ["ci-base-plugins", "ci-PluginsVars", "hict-base-tgz"],
+      "cacheVariables": {
+	  "HDF5_ENABLE_PLUGIN_SUPPORT": "ON",
+	  "HDF5_ENABLE_LZF_SUPPORT": "ON",
+	  "HDF5_ENABLE_BSHUF_SUPPORT": "ON",
+	  "HDF5_ENABLE_LZ4_SUPPORT": "ON",
+          "HDF5_ENABLE_BLOSC_SUPPORT": "ON",
+          "HDF5_ENABLE_BLOSC": "ON",
+          "H5PL_ALLOW_EXTERNAL_SUPPORT": "TGZ",
+          "ENABLE_BLOSC": "ON",
+          "ENABLE_LZF": "ON",
+          "ENABLE_LZ4": "ON",
+          "ENABLE_BSHUF": "ON",
+          "H5PL_VERS_MAJOR": "1",
+          "H5PL_VERS_MINOR": "10",
+          "H5PL_VERS_RELEASE": "11"
+      }
+    },
+    {
+      "name": "hict-ExamplesVars",
+      "hidden": true,
+      "generator": "Unix Makefiles",
+      "cacheVariables": {
+        "HDF5_EXAMPLES_COMPRESSED": {"type": "STRING", "value": "hdf5-examples-2.0.4.tar.gz"},
+        "HDF5_EXAMPLES_COMPRESSED_DIR": {"type": "STRING", "value": "${sourceParentDir}/"},
+        "EXAMPLES_TGZ_ORIGPATH": {"type": "STRING", "value": "https://github.com/HDFGroup/hdf5-examples/archive/refs/tags/"},
+        "EXAMPLES_TGZ_ORIGNAME": {"type": "STRING", "value": "2.0.4.tar.gz"}
+      }
+    },
+    {
+      "name": "hict-StdExamples",
+      "hidden": true,
+      "generator": "Unix Makefiles",
+      "inherits": ["ci-base", "hict-ExamplesVars", "hict-base-tgz"],
+      "cacheVariables": {
+        "EXAMPLES_USE_RELEASE_NAME": "ON",
+        "EXAMPLES_USE_LOCALCONTENT": "ON",
+        "HDF5_PACK_EXAMPLES": "ON",
+        "EXAMPLES_DOWNLOAD": "ON"
+      }
+    },
+    {
+      "name": "hict-StdShar",
+      "hidden": true,
+      "inherits": ["hict-StdCompression", "hict-StdExamples", "hict-StdPlugins"],
+      "generator": "Unix Makefiles",
+      "cacheVariables": {
+        "HDF_PACKAGE_NAMESPACE": {"type": "STRING", "value": "hdf5::"},
+        "HDF5_INSTALL_MOD_FORTRAN": "NO",
+        "HDF5_BUILD_GENERATORS": "ON",
+        "HDF5_ENABLE_ALL_WARNINGS": "ON",
+        "HDF5_MINGW_STATIC_GCC_LIBS": "ON",
+        "HDF_TEST_EXPRESS": "3",
+        "H5_USE_110_API": "ON",
+        "DEFAULT_API_VERSION": "v110"
+      }
+    },
+    {
+      "name": "hict-StdShar-noexamples",
+      "hidden": true,
+      "inherits": ["hict-StdCompression", "hict-StdPlugins"],
+      "generator": "Unix Makefiles",
+      "cacheVariables": {
+        "HDF_PACKAGE_NAMESPACE": {"type": "STRING", "value": "hdf5::"},
+        "HDF5_INSTALL_MOD_FORTRAN": "NO",
+        "HDF5_BUILD_GENERATORS": "ON",
+        "HDF5_ENABLE_ALL_WARNINGS": "ON",
+        "HDF5_MINGW_STATIC_GCC_LIBS": "ON",
+        "HDF_TEST_EXPRESS": "3",
+        "HDF5_TEST_EXPRESS": "3",
+        "HDF5_BUILD_DOC": "OFF",
+        "HDF5_PACK_EXAMPLES": "OFF",
+        "H5_USE_110_API": "ON",
+        "DEFAULT_API_VERSION": "v110"
+      }
+    },
+    {
+      "name": "hict-StdShar-MSVC",
+      "description": "MSVC Standard Config for x64 (Release) for HiCT jHDF5 with plugins",
+      "inherits": [
+        "ci-x64-Release-MSVC",
+        "ci-CPP",
+        "ci-Java",
+        "hict-StdShar"
+      ]
+    },
+    {
+      "name": "hict-StdShar-GNUC",
+      "generator": "Unix Makefiles",
+      "description": "GNUC Standard Config for x64 (Release) for HiCT jHDF5 with plugins",
+      "inherits": [
+        "ci-x64-Release-GNUC",
+        "ci-CPP",
+        "ci-Java",
+        "hict-StdShar"
+      ]
+    },
+    {
+      "name": "hict-StdShar-GNUC-noexamples",
+      "generator": "Unix Makefiles",
+      "description": "GNUC Standard Config for x64 (Release) for HiCT jHDF5 with plugins and no examples",
+      "inherits": [
+        "ci-x64-Release-GNUC",
+        "ci-CPP",
+        "ci-Java",
+        "hict-StdShar-noexamples"
+      ]
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "hict-StdShar-MSVC",
+      "description": "MSVC Standard Build for x64 (Release) for HiCT version of jHDF5 with plugins",
+      "configurePreset": "hict-StdShar-MSVC",
+      "verbose": false,
+      "inherits": [
+        "ci-x64-Release-MSVC"
+      ]
+    },
+    {
+      "name": "hict-StdShar-GNUC",
+      "description": "GNUC Standard Build for x64 (Release) for HiCT version of jHDF5 with plugins",
+      "configurePreset": "hict-StdShar-GNUC",
+      "verbose": false,
+      "inherits": [
+        "ci-x64-Release-GNUC"
+      ]
+    },
+    {
+      "name": "hict-StdShar-GNUC-noexamples",
+      "description": "GNUC Standard Build for x64 (Release) for HiCT version of jHDF5 with plugins and no examples package",
+      "configurePreset": "hict-StdShar-GNUC-noexamples",
+      "verbose": false,
+      "inherits": [
+        "ci-x64-Release-GNUC"
+      ]
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "hict-StdShar-MSVC",
+      "configurePreset": "hict-StdShar-MSVC",
+      "inherits": [
+        "ci-x64-Release-MSVC"
+      ],
+      "filter": {
+        "exclude": {
+          "name": "H5DUMP-tfloatsattrs"
+        }
+      }
+    },
+    {
+      "name": "hict-StdShar-GNUC",
+      "configurePreset": "hict-StdShar-GNUC",
+      "inherits": [
+        "ci-x64-Release-GNUC"
+      ]
+    }
+  ],
+  "packagePresets": [
+    {
+      "name": "hict-StdShar-MSVC",
+      "configurePreset": "hict-StdShar-MSVC",
+      "inherits": "ci-x64-Release-MSVC"
+    },
+    {
+      "name": "hict-StdShar-GNUC",
+      "configurePreset": "hict-StdShar-GNUC",
+      "inherits": "ci-x64-Release-GNUC",
+      "output": {
+        "debug":false,
+        "verbose": false
+      }
+    },
+    {
+      "name": "hict-StdShar-GNUC-noexamples",
+      "configurePreset": "hict-StdShar-GNUC-noexamples",
+      "inherits": "ci-x64-Release-GNUC",
+      "output": {
+        "debug":false,
+        "verbose": false
+      }
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "hict-StdShar-MSVC",
+      "steps": [
+        {"type": "configure", "name": "hict-StdShar-MSVC"},
+        {"type": "build", "name": "hict-StdShar-MSVC"},
+        {"type": "test", "name": "hict-StdShar-MSVC"},
+        {"type": "package", "name": "hict-StdShar-MSVC"}
+      ]
+    },
+    {
+      "name": "hict-StdShar-GNUC",
+      "steps": [
+        {"type": "configure", "name": "hict-StdShar-GNUC"},
+        {"type": "build", "name": "hict-StdShar-GNUC"},
+        {"type": "test", "name": "hict-StdShar-GNUC"},
+        {"type": "package", "name": "hict-StdShar-GNUC"}
+      ]
+    },
+    {
+      "name": "hict-StdShar-MSVC-notest",
+      "steps": [
+        {"type": "configure", "name": "hict-StdShar-MSVC"},
+        {"type": "build", "name": "hict-StdShar-MSVC"}
+      ]
+    },
+    {
+      "name": "hict-StdShar-GNUC-notest",
+      "steps": [
+        {"type": "configure", "name": "hict-StdShar-GNUC"},
+        {"type": "build", "name": "hict-StdShar-GNUC"}
+      ]
+    },
+    {
+      "name": "hict-StdShar-GNUC-notest-noexamples",
+      "steps": [
+        {"type": "configure", "name": "hict-StdShar-GNUC-noexamples"},
+        {"type": "build", "name": "hict-StdShar-GNUC-noexamples"},
+        {"type": "package", "name": "hict-StdShar-GNUC-noexamples"}
+      ]
+    }
+  ]
+}

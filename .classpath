@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="source/java"/>
+	<classpathentry kind="src" path="sourceExamples/java"/>
+	<classpathentry kind="src" path="sourceTest/java"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
+	<classpathentry kind="lib" path="libs"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="libs/test/hamcrest-core.jar"/>
+	<classpathentry kind="lib" path="libs/test/hamcrest-integration.jar"/>
+	<classpathentry kind="lib" path="libs/test/hamcrest-library.jar"/>
+	<classpathentry kind="lib" path="libs/test/jmock.jar"/>
+	<classpathentry kind="lib" path="libs/test/objenesis-1.0.jar"/>
+	<classpathentry kind="lib" path="libs/test/testng-jdk15.jar"/>
+	<classpathentry kind="lib" path="libs/build/ecj-4.6.1.jar"/>
+	<classpathentry kind="lib" path="libs/prod/commons-lang3-3.7.jar" sourcepath="libs/prod/commons-lang3-3.7-sources.jar"/>
+	<classpathentry kind="lib" path="libs/prod/commons-io-2.6.jar" sourcepath="libs/prod/commons-io-2.6-sources.jar"/>
+	<classpathentry kind="lib" path="libs/prod/args4j-2.33.jar"/>
+	<classpathentry kind="lib" path="libs/prod/sis-base-18.09.0.jar" sourcepath="libs/prod/sis-base-18.09.0-sources.jar"/>
+	<classpathentry kind="output" path="targets/classes"/>
+</classpath>

@@ -1,0 +1,26 @@
+diff -ruN CMake-hdf5-1.10.4.orig/HDF5options.cmake CMake-hdf5-1.10.4/HDF5options.cmake
+--- CMake-hdf5-1.10.4.orig/HDF5options.cmake	2018-08-21 08:17:50.000000000 +0200
++++ CMake-hdf5-1.10.4/HDF5options.cmake	2018-08-23 12:14:22.128057145 +0200
+@@ -38,9 +38,9 @@
+ 
+ #############################################################################################
+ ####      java enabled      ####
+-#set (ADD_BUILD_OPTIONS "${ADD_BUILD_OPTIONS} -DHDF5_BUILD_JAVA:BOOL=ON")
++set (ADD_BUILD_OPTIONS "${ADD_BUILD_OPTIONS} -DHDF5_BUILD_JAVA:BOOL=ON")
+ ####      java disabled      ####
+-set (ADD_BUILD_OPTIONS "${ADD_BUILD_OPTIONS} -DHDF5_BUILD_JAVA:BOOL=OFF")
++#set (ADD_BUILD_OPTIONS "${ADD_BUILD_OPTIONS} -DHDF5_BUILD_JAVA:BOOL=OFF")
+ 
+ #############################################################################################
+ ### change install prefix (default use INSTALLDIR value)
+@@ -61,8 +61,8 @@
+ ### disable using ext zlib
+ #set (ADD_BUILD_OPTIONS "${ADD_BUILD_OPTIONS} -DHDF5_ENABLE_Z_LIB_SUPPORT:BOOL=OFF")
+ ### disable using ext szip
+-#set (ADD_BUILD_OPTIONS "${ADD_BUILD_OPTIONS} -DHDF5_ENABLE_SZIP_SUPPORT:BOOL=OFF")
+-#set (ADD_BUILD_OPTIONS "${ADD_BUILD_OPTIONS} -DHDF5_ENABLE_SZIP_ENCODING:BOOL=OFF")
++set(ADD_BUILD_OPTIONS "${ADD_BUILD_OPTIONS} -DHDF5_ENABLE_SZIP_SUPPORT:BOOL=OFF")
++set(ADD_BUILD_OPTIONS "${ADD_BUILD_OPTIONS} -DHDF5_ENABLE_SZIP_ENCODING:BOOL=OFF")
+ 
+ ####      package examples       ####
+ #set (ADD_BUILD_OPTIONS "${ADD_BUILD_OPTIONS} -DHDF5_PACK_EXAMPLES:BOOL=ON -DHDF5_EXAMPLES_COMPRESSED:STRING=HDF5Examples-1.10.13-Source.tar.gz -DHDF5_EXAMPLES_COMPRESSED_DIR:PATH=${CTEST_SCRIPT_DIRECTORY}")

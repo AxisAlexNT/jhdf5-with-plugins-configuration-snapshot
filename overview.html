@@ -1,0 +1,68 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+     "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+  <head>
+    <title>The JHDF5 API</title>
+  </head>
+  <body>
+    <p> 
+    HDF5 is an efficient, well-documented, non-proprietary binary data format and library developed 
+    and maintained by the <a href="http://hdfgroup.org/">HDF Group</a>. JHDF5 is a high-level API 
+    in Java for reading and writing HDF5 files, building on the libraries provided by the HDF Group.
+    </p>
+    <h2>Classes to get started</h2>
+    <p>
+    In order to get started with the API, see the <a href="ch/systemsx/cisd/hdf5/HDF5Factory.html">
+    <code>HDF5Factory</code></a> class.
+    </p>
+    <p>
+    For simple standard use, have a look at  
+    <a href="ch/systemsx/cisd/hdf5/IHDF5SimpleWriter.html"><code>IHDF5SimpleWriter</code></a> 
+    interface for read-write access and the <a href="ch/systemsx/cisd/hdf5/IHDF5SimpleReader.html">
+    <code>IHDF5SimpleReader</code></a> interface for read-only access.
+    </p>
+    <p>
+    If you need to perform advanced operations, see the 
+    <a href="ch/systemsx/cisd/hdf5/IHDF5Writer.html"><code>IHDF5Writer</code></a> interface for 
+    read-write access and the <a href="ch/systemsx/cisd/hdf5/IHDF5Reader.html">
+    <code>IHDF5Reader</code></a> interface for read-only access.
+    </p>
+    <h2>Examples</h2>
+    <p>
+    A simple use case is writing a <code>float[]</code> to an HDF5 file and reading it again:
+    <pre>
+    IHDF5SimpleWriter writer = HDF5Factory.open("myfile.h5");
+    float[] mydata = new float[1000];
+    ...&lt;fill mydata&gt>...
+    writer.write("mydata", f);
+    writer.close()
+    ...
+    IHDF5SimpleReader reader = HDF5Factory.openForReading("myfile.h5");
+    float[] mydata = reader.readFloatArray("mydata");
+    ...&lt;use mydata&gt;...
+    reader.close();
+    </pre>
+    For a working minimal program, see <a href="ch/systemsx/cisd/hdf5/examples/FloatArrayExample.java" 
+    target="_blank">this example</a>.
+    </p>
+    <p>
+    <h3>Other example programs:</h3>
+    <ul>
+    <li><a href="ch/systemsx/cisd/hdf5/examples/SimpleVoltageMeasurementCompoundExample.java" 
+    target="_blank">Simple compound data set example</a></li>
+    <li><a href="ch/systemsx/cisd/hdf5/examples/FullVoltageMeasurementCompoundExample.java" 
+    target="_blank">Example showing some alternatives on writing and reading compound data 
+    sets</a></li>
+    <li><a href="ch/systemsx/cisd/hdf5/examples/EnumExample.java" 
+    target="_blank">Example for using an enum data set</a></li>
+    <li><a href="ch/systemsx/cisd/hdf5/examples/AttributeExample.java" 
+    target="_blank">Example for using attributes</a></li>
+    <li><a href="ch/systemsx/cisd/hdf5/examples/BlockwiseMatrixExample.java" target="_blank">
+    Example for reading and writing large matrices block-wise</a></li>
+    <li><a href="ch/systemsx/cisd/hdf5/examples/BrowseExample.java" target="_blank">
+    Example for browsing an HDF5 file</a></li>
+    </ul>
+    </p>
+    See also the <a href="JHDF5.pdf">PDF documentation</a>.
+  </body>
+</html> 

@@ -1,0 +1,15 @@
+Build prerequisites:
+- Microsoft Visual Studio 2017 Community Edition (x64)
+- cmake 3.12.1-x64
+- Oracle JDK 8 x64 (tested: jdk-8u181-windows-x64.exe)
+- Windows build has been tested with hdf5-1.10.3 (replace with the version you wish to build).
+
+Steps:
+1. Open https://portal.hdfgroup.org/display/support/HDF5+1.10.3, download CMake-hdf5-1.10.3.zip and copy it to this folder (source/c).
+2. On Linux, in the workspace folder source/c, call the script ./prepare_winbuild.sh
+3. Copy the folder source/c to a network drive of the Windows build machine (let's say to F:\c)
+4. On Windows build machine, open "x64 Native Tools command prompt window for VS 2017"
+5. Change working directory of command prompt window into F:\c\build\CMake-hdf5-1.10.3
+6. In the command prompt window, run build-VS2017-64.bat
+7. If the build runs successful, you will find the file F:\c\build\CMake-hdf5-1.10.3\build\bin\Release\hdf5_java.dll
+8. Copy F:\c\build\CMake-hdf5-1.10.3\build\bin\Release\hdf5_java.dll to the Linux workspace folder libs/native/jhdf5/amd64-Windows/jhdf5.dll 
