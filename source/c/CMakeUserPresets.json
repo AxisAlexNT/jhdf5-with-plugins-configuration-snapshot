@@ -21,8 +21,9 @@
       "generator": "Unix Makefiles",
       "cacheVariables": {
         "HDF5_PACKAGE_EXTLIBS": "ON",
-        "ZLIB_USE_LOCALCONTENT": "ON",
+        "ZLIB_USE_LOCALCONTENT": "OFF",
 	"HDF5_ENABLE_ZLIB_SUPPORT": "ON",
+	"HDF5_ENABLE_Z_LIB_SUPPORT": "ON",
         "LIBAEC_USE_LOCALCONTENT": "OFF",
         "HDF5_ENABLE_SZIP_SUPPORT": "OFF",
         "HDF5_ENABLE_SZIP_ENCODING": "OFF"
@@ -82,10 +83,12 @@
         "HDF_PACKAGE_NAMESPACE": {"type": "STRING", "value": "hdf5::"},
         "HDF5_INSTALL_MOD_FORTRAN": "NO",
         "HDF5_BUILD_GENERATORS": "ON",
+        "HDF5_BUILD_JAVA": "ON",
         "HDF5_ENABLE_ALL_WARNINGS": "ON",
         "HDF5_MINGW_STATIC_GCC_LIBS": "ON",
         "HDF_TEST_EXPRESS": "3",
         "H5_USE_110_API": "ON",
+        "HDF5_USE_110_API": "ON",
         "DEFAULT_API_VERSION": "v110"
       }
     },
