@@ -89,7 +89,13 @@
         "HDF_TEST_EXPRESS": "3",
         "H5_USE_110_API": "ON",
         "HDF5_USE_110_API": "ON",
-        "DEFAULT_API_VERSION": "v110"
+        "DEFAULT_API_VERSION": "v110",
+	"HDF5_BUILD_SHARED": "ON",
+	"HDF5_BUILD_ONLY_SHARED": "ON",
+	"BUILD_SHARED_LIBS": "ON",
+	"ONLY_SHARED_LIBS": "ON",
+	"HDF5_ENABLE_PARALLEL": "ON",
+	"HDF5_ENABLE_THREADSAFE": "ON"
       }
     },
     {
@@ -116,7 +122,6 @@
       "description": "MSVC Standard Config for x64 (Release) for HiCT jHDF5 with plugins",
       "inherits": [
         "ci-x64-Release-MSVC",
-        "ci-CPP",
         "ci-Java",
         "hict-StdShar"
       ]
@@ -127,7 +132,6 @@
       "description": "GNUC Standard Config for x64 (Release) for HiCT jHDF5 with plugins",
       "inherits": [
         "ci-x64-Release-GNUC",
-        "ci-CPP",
         "ci-Java",
         "hict-StdShar"
       ]
@@ -138,7 +142,6 @@
       "description": "GNUC Standard Config for x64 (Release) for HiCT jHDF5 with plugins and no examples",
       "inherits": [
         "ci-x64-Release-GNUC",
-        "ci-CPP",
         "ci-Java",
         "hict-StdShar-noexamples"
       ]
