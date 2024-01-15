@@ -1,4 +1,9 @@
 #! /bin/bash
+set -e
+set -u
+set -o pipefail
+set -x
+
 
 source version.sh
 PLATFORM="$1"
@@ -12,7 +17,8 @@ HDF5_CLEAN="1"
 CMAKE_PRESET="hict-StdShar-GNUC-notest"
 HDF5_USE_AUTOTOOLS=""
 
-REPLACE_JNI="1"
+# Should java/src/jni folder be overwritten by JHDF5 patches?
+REPLACE_JNI="0"
 
 export PATH="/opt/cmake/bin:/opt/cmake:$PATH"
 
@@ -23,9 +29,12 @@ if [ "$PLATFORM" != "i386" -a "$PLATFORM" != "x86" -a "$PLATFORM" != "amd64" -a 
   exit 1
 fi
 
-if [[ ! -z $BUILD_HDF5 || ! -d build ]]; then
+if [[ ! -z $BUILD_HDF5 || ! -d "build" ]]; then
+	echo "Removing existing build directory and creating new one"
 	rm -fR build || true
-	mkdir build || true
+	mkdir build
+else
+	echo "Not overwriting existing build directory"
 fi
 
 cd build
@@ -40,8 +49,11 @@ if [[ ! -z $BUILD_HDF5_PLUGINS ]]; then
 fi
 
 if [[ ! -z $CMAKE_HDF5 ]]; then
+	echo "Preparing files to build HDF5 with CMake"
 	if [[ -f "../CMake-hdf5-$VERSION.zip" ]]; then
+		echo "Found CMake-hdf5-$VERSION.zip"
 		if [[ ! -z "$HDF5_CLEAN" ]]; then
+			echo "HDF5_CLEAN is set to true, removing existing sources"
 			rm -rf CMake-hdf5-${VERSION}*
 			rm -rf hdf5-$VERSION-$PLATFORM
 			#mkdir hdf5-$VERSION-$PLATFORM
@@ -164,13 +176,15 @@ if [[ ! -z $CMAKE_HDF5 ]]; then
 		cp -arf ../*.c $SRCDIR/java/src/jni/
 	fi
 	cp -af ../*tar.gz "$SRCDIR/../"
-	cd hdf5-$VERSION-$PLATFORM
 	echo "HDF5 Source DIR is $SRCDIR"
-	
-	cmake -S "${SRCDIR}" --list-presets
 	cd $SRCDIR
+	echo "Available CMake presets:"
+	cmake -S "${SRCDIR}" --list-presets
 	if [[ ! -z "$REPLACE_JNI" && "$REPLACE_JNI" -ne "0" && "$REPLACE_JNI" -ne "no" && "$REPLACE_JNI" -ne "1" ]]; then
+		echo "Applying JNI path"
 		patch --ignore-whitespace --fuzz 10 -p2 < ../../../cmake_add_sources.diff
+	else
+		echo "Not applying JNI patch as set by parameters in script"
 	fi
 	rm -f cmake.std*.log
 	cmake --workflow --preset="$CMAKE_PRESET" --fresh > >(tee -a cmake.stdout.log) 2> >(tee -a cmake.stderr.log >&2)

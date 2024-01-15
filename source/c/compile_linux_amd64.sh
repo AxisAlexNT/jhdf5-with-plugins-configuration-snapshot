@@ -1,14 +1,19 @@
 #! /bin/bash
+set -e
+set -u
+set -o pipefail
+set -x
 
 source version.sh
 
-JVM_INCLUDE_PATH="/usr/lib/jvm/java-1.8.0/include/"
+#JVM_INCLUDE_PATH="/usr/lib/jvm/java-1.8.0/include/"
 JVM_INCLUDE_PATH="/usr/lib/jvm/java-8-openjdk-amd64/include/"
 
 if [ -n "$POSTFIX" ]; then
   VERSION="$VERSION-$POSTFIX"
 fi
 
+# An old way for autotools build tree
 if [[ ! -z "" ]]; then
 	rm -fR build/jni
 	rm -f build/libjhdf5.so
@@ -50,6 +55,8 @@ BDIR="$BUILDDIR/hdf5-$VERSION/build110/hict-StdShar-GNUC/"
 rm -rf jhdf5*.std*.log jhdf5*.so
 echo "JHDF5 building..."
 if [[ ! -z "" ]]; then
+
+	# Bad: links JHDF5 statically to HDF5, not suitable for plugins
 	gcc \
 		-shared -O3 -march=native -mtune=znver3 -fPIC \
 		-Wl,--exclude-libs,ALL \
@@ -63,7 +70,8 @@ if [[ ! -z "" ]]; then
 		$(find $BDIR -type f -name "*.a" | xargs -n1 realpath) \
 		-o libjhdf5.so -lz \
 			> >(tee -a jhdf5.stdout.log) 2> >(tee -a jhdf5.stderr.log >&2)
-			
+
+	# Even worse: links JHDF5 statically to HDF5 and exports all symbols
 	gcc \
 		-shared -O3 -march=native -mtune=znver3 -fPIC \
 		$BUILDDIR/jni/*.c \
@@ -77,7 +85,9 @@ if [[ ! -z "" ]]; then
 		-o libjhdf5_export.so -lz \
 			> >(tee -a jhdf5_export.stdout.log) 2> >(tee -a jhdf5_export.stderr.log >&2)
 fi
-		
+
+
+# Links JHDF5 dynamically to HDF5 (still exports all symbols, which seems to be ok?)
 gcc \
 	-shared -O3 -march=native -mtune=znver3 -fPIC \
 	$BUILDDIR/jni/*.c  \
@@ -91,9 +101,11 @@ gcc \
 	-o libjhdf5_export_sharedlink.so -lz \
 		> >(tee -a jhdf5_export_sharedlink.stdout.log) 2> >(tee -a jhdf5_export_sharedlink.stderr.log >&2)
 
+mv libjhdf5_export_sharedlink.so libjhdf5.so
+
 
 if [ -f libjhdf5.so ]; then
-  #cp -pf libjhdf5.so ../../../libs/native/jhdf5/amd64-Linux/
+  cp -pf $BUILDDIR/libjhdf5.so $BUILDDIR/../../../libs/native/jhdf5/amd64-Linux/
   echo "Build OK"
 else
   echo "ERROR"

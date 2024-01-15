@@ -1,4 +1,9 @@
 #! /bin/bash
+set -e
+set -u
+set -o pipefail
+set -x
+
 
 source version.sh
 
@@ -19,9 +24,10 @@ fi
 rm -fR CMake-hdf5-$VERSION/hdf5-$VERSION/java/src/jni
 cp -af ../jni CMake-hdf5-$VERSION/hdf5-$VERSION/java/src/
 cp -af ../*.c CMake-hdf5-$VERSION/hdf5-$VERSION/java/src/jni/
+cp -af ../HDF5options.cmake CMake-hdf5-$VERSION/
 
 cd CMake-hdf5-$VERSION
-patch --ignore-whitespace --fuzz 10 -p1 < ../../cmake_set_hdf5_options.diff
+#patch --ignore-whitespace --fuzz 10 -p1 < ../../cmake_set_hdf5_options.diff
 
 cp -af ../../*.tar.gz .
 
