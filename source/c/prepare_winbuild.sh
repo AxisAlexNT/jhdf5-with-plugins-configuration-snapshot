@@ -8,7 +8,10 @@ set -x
 source version.sh
 
 #rm -fR build
-#mkdir build
+if [[ ! -d build ]]; then
+	echo "Creating build directory"
+	mkdir build
+fi
 
 cd build
 BUILD_ROOT=`pwd`
