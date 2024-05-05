@@ -55,12 +55,11 @@ jobs:
             echo "::warning title=Cannot find workflow subdirectory ::Cannot find directory ${OLD_PDIR}, changed to ${PDIR}"
           fi
           if [[ ! -d "${PDIR}" ]]; then
-            echo "::error title=Directory heuristic failed :: Still cannot find workflow build directory ${PDIR}"
+            echo "::error title=Directory heuristic failed ::Still cannot find workflow build directory ${PDIR}"
           fi
           mkdir lib
           echo "Copying shared objects..."
-          mkdir -p lib
-          find "${PDIR}" -type f -name '*.so' -print0 | xargs -n1 cp -aRf -t lib/
+          find "${PDIR}" -type f -name '*.so' -print0 | xargs --null -n1 cp -vf -t lib/
           echo "Compressing HDF5 package..."
           tar -C "${PDIR}" -c . | zstd -z --adapt -T0 -v -o ./hdf5_package.tar.zst
           echo "DONE"
@@ -141,7 +140,7 @@ jobs:
           set -ex
           mkdir build || true
           pushd build
-          zstd -d -c -v -T0 hdf5_package.tar.zst | tar -xv
+          zstd -d -c -v -T0 ../hdf5_package.tar.zst | tar -xv
           popd
 
       - name: Setup JDK 8
@@ -387,7 +386,7 @@ jobs:
         tar -c . | zstd -z -T0 --adapt -v -o archive.tar.zst
         
     - name: Publish build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       continue-on-error: true
       if: env.UPLOAD_DEBUG_ARCHIVE == 'true'
       with:
