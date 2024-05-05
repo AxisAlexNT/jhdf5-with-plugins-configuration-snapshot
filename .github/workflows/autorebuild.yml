@@ -34,10 +34,18 @@ jobs:
         run: ./compile_hdf5_linux_amd64.sh
 
       - name: Compress built HDF5
-        working-directory: ./source/c
+        working-directory: ./source/c/build
         shell: bash
         run: |
-          tar -C build -c hdf5-*/build110/hict-StdShar-GNUC/ | zstd -z --adapt -T0 -v -o ./hdf5_package.tar.zst
+          EDIR=$(ls | grep -E '^hdf5-([0-9.]+)$')
+          if [[ ! -d "${EDIR}" ]]; then
+            echo "::error title=Cannot find build directory ::Cannot find build directory (detected ${EDIR}) for HDF5 version out of $(ls)"
+          fi
+          RDIR=$(ls "${EDIR}" | grep -E '^build([0-9]+)$')
+          if [[ ! -d "${EDIR}/${RDIR}" ]]; then
+            echo "::error title=Cannot find build subdirectory ::Cannot find build subdirectory (detected ${RDIR}) for HDF5 version out of $(ls)"
+          fi
+          tar -c "${EDIR}/${RDIR}/hict-StdShar-GNUC/" | zstd -z --adapt -T0 -v -o ./hdf5_package.tar.zst
 
       - name: Compress lib directory
         working-directory: ./source/c/build
