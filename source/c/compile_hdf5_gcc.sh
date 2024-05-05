@@ -18,7 +18,12 @@ CMAKE_PRESET="hict-StdShar-GNUC-notest"
 HDF5_USE_AUTOTOOLS=""
 
 # Should java/src/jni folder be overwritten by JHDF5 patches?
-REPLACE_JNI="0"
+if [ -z ${REPLACE_JNI+x} ]; then  
+	REPLACE_JNI="0"
+ 	echo "REPLACE_JNI variable was not provided in environment, default set to no (0)"
+ else 
+ 	echo "REPLACE_JNI variable is provided and is set to $REPLACE_JNI"
+ fi
 
 export PATH="/opt/cmake/bin:/opt/cmake:$PATH"
 
@@ -168,6 +173,8 @@ if [[ ! -z "$HDF5_USE_AUTOTOOLS" && "$HDF5_USE_AUTOTOOLS" -ne "0" && "$HDF5_USE_
 	#tar cfz hdf5-examples.tar.gz hdf5-examples-master
 fi
 
+
+# Currently, only this way of building HDF5 is supported, using CMake workflow mode:
 if [[ ! -z $CMAKE_HDF5 ]]; then
 	SRCDIR=$(realpath hdf5-$VERSION/hdf5-$VERSION/)
 	cp -af ../CMakeUserPresets.json $SRCDIR/CMakeUserPresets.json

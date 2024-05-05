@@ -4,10 +4,29 @@ set -u
 set -o pipefail
 set -x
 
+SCRIPT_PATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+
 source version.sh
 
-#JVM_INCLUDE_PATH="/usr/lib/jvm/java-1.8.0/include/"
-JVM_INCLUDE_PATH="/usr/lib/jvm/java-8-openjdk-amd64/include/"
+# Add optimization arguments for JHDF5 build
+if [ -z ${JHDF5_ADDITIONAL_GCC_FLAGS+x} ]; then	
+	JHDF5_ADDITIONAL_GCC_FLAGS="-O3 -march=haswell -mtune=znver3 -Wl,--exclude-libs,ALL"
+ 	echo "JHDF5_ADDITIONAL_GCC_FLAGS variable was not provided in environment, default set to ${JHDF5_ADDITIONAL_GCC_FLAGS}"
+ else 
+ 	echo "JHDF5_ADDITIONAL_GCC_FLAGS variable is provided and is set to ${JHDF5_ADDITIONAL_GCC_FLAGS}"
+ fi
+
+if [ -z ${JVM_INCLUDE_PATH+x} ]; then	
+	JVM_INCLUDE_PATH="/usr/lib/jvm/java-8-openjdk-amd64/include/"
+ 	echo "JVM_INCLUDE_PATH variable was not provided in environment, default set to ${JVM_INCLUDE_PATH}"
+ else 
+ 	echo "JVM_INCLUDE_PATH variable is provided and is set to ${JVM_INCLUDE_PATH}"
+ fi
+
+ if [[ ! -d "${SCRIPT_PATH}" ]]; then
+	"::error file=${SCRIPT_PATH},line=28::JVM Include directory (${SCRIPT_PATH}) does not exist, build will fail."
+ 	exit 1
+ fi
 
 if [ -n "$POSTFIX" ]; then
   VERSION="$VERSION-$POSTFIX"
@@ -51,7 +70,6 @@ PDIR="$BUILDDIR/hdf5-$VERSION/build110/hict-StdShar-GNUC/_CPack_Packages/Linux/T
 BDIR="$BUILDDIR/hdf5-$VERSION/build110/hict-StdShar-GNUC/"
 
 
-
 rm -rf jhdf5*.std*.log jhdf5*.so
 echo "JHDF5 building..."
 if [[ ! -z "" ]]; then
@@ -89,7 +107,9 @@ fi
 
 # Links JHDF5 dynamically to HDF5 (still exports all symbols, which seems to be ok?)
 gcc \
-	-shared -O3 -march=native -mtune=znver3 -fPIC \
+	-shared \
+ 	-fPIC \
+ 	$JHDF5_ADDITIONAL_GCC_FLAGS \  	
 	$BUILDDIR/jni/*.c  \
 	-I"$PDIR/include" \
 	-I$BDIR/src \
@@ -101,8 +121,7 @@ gcc \
 	-o libjhdf5_export_sharedlink.so -lz \
 		> >(tee -a jhdf5_export_sharedlink.stdout.log) 2> >(tee -a jhdf5_export_sharedlink.stderr.log >&2)
 
-mv libjhdf5_export_sharedlink.so libjhdf5.so
-
+cp -avf libjhdf5_export_sharedlink.so libjhdf5.so
 
 if [ -f libjhdf5.so ]; then
   cp -pf $BUILDDIR/libjhdf5.so $BUILDDIR/../../../libs/native/jhdf5/amd64-Linux/
