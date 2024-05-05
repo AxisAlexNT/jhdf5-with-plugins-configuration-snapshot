@@ -168,6 +168,15 @@ jobs:
         with:
           name: hdf5_linux_lib
           path: './source/c/jni/'
+
+      - name: "Copy shared objects and list JNI directory"
+        shell: bash
+        run: |
+          set -eux
+          pushd ./source/c/jni/
+          find . -type f -name '*.so' -print0 | xargs --null -n1 cp -av -t .
+          ls -alRh
+          popd
       
       - name: Build JHDF5
         working-directory: ./source/c
