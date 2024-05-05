@@ -61,7 +61,7 @@ jobs:
           echo "Copying shared objects..."
           find "${PDIR}" -type f -name '*.so' -print0 | xargs --null -n1 cp -vf -t lib/
           echo "Compressing HDF5 package..."
-          tar -c "${PDIR}" | zstd -z --adapt -T0 -v -o ./hdf5_package.tar.zst
+          tar -c "${EDIR}" | zstd -z --adapt -T0 -v -o ./hdf5_package.tar.zst
           echo "DONE"
 
       - name: 'Artifact upload: HDF5 built package (Linux)'
