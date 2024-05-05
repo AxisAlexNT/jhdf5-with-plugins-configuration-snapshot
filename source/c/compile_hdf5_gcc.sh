@@ -67,6 +67,15 @@ if [[ ! -z $CMAKE_HDF5 ]]; then
 		unzip "CMake-hdf5-$VERSION.zip"
 		mv CMake-hdf5-$VERSION hdf5-$VERSION
 		rm -f "CMake-hdf5-$VERSION.zip"
+  		for fname in "hdf5_plugins-master.zip" "hdf5-examples-master.zip" "LIBAEC.tar.gz" "ZLib.tar.gz"; do
+    			if [[ -f "../${fname}" ]]; then
+       				cp "../${fname}" .
+	   			mv "../${fname}" hdf5-$VERSION
+       				echo "::notice ::Moved package ${fname} into the source"
+			else
+   				echo "::warning ::Cannot find package ${fname} for moving into the source"
+       			fi
+    		done
 	else
 		echo "Can not find CMake-hdf5-$VERSION.zip"
 		exit 1
