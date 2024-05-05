@@ -130,6 +130,7 @@
         "HDF5_ENABLE_PARALLEL": "OFF",
         "HDF5_ENABLE_THREADSAFE": "OFF",
         "CMAKE_SHARED_LIBRARY_SUFFIX": "",
+        "HDF5_USE_GNU_DIRS": "ON",
         "CMAKE_INSTALL_LIBDIR": "lib",
         "HDF5_NO_PACKAGES": "OFF"
       }
