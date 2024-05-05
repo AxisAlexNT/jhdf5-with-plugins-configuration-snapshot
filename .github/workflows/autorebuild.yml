@@ -9,6 +9,11 @@ on:
 jobs:
   build-hdf5-linux:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      packages: write
+    
     steps:
 
     - name: Check presence of tools
