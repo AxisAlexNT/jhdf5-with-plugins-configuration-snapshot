@@ -58,6 +58,14 @@ jobs:
           fi
           tar -c "${PDIR}" | zstd -z --adapt -T0 -v -o ./hdf5_package.tar.zst
 
+      - name: 'Artifact upload: HDF5 built package (Linux)'
+        uses: actions/upload-artifact@v4
+        with:
+          name: hdf5_linux_package
+          path: './source/c/hdf5_package.tar.zst'
+          compression-level: 0
+          if-no-files-found: error
+
       - name: Compress lib directory
         working-directory: ./source/c/build
         shell: bash
@@ -78,14 +86,6 @@ jobs:
         with:
           name: hdf5_linux_lib_package
           path: './source/c/build/hdf5_lib.tar.zst'
-          compression-level: 0
-          if-no-files-found: error
-
-      - name: 'Artifact upload: HDF5 built package (Linux)'
-        uses: actions/upload-artifact@v4
-        with:
-          name: hdf5_linux_package
-          path: './source/c/hdf5_package.tar.zst'
           compression-level: 0
           if-no-files-found: error
 
