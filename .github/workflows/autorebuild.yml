@@ -79,11 +79,11 @@ jobs:
           if-no-files-found: error
 
       - name: Generate debug archive for failed jobs
-        if: ${{ failure() }}
+        if: ${{ always() }}
         run: tar -c . | zstd -z -T0 --adapt -v -o debug.tar.zst
 
       - name: Upload debug artifact
-        if: ${{ failure() }}
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           path: debug.tar.zst
