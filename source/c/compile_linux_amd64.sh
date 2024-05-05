@@ -62,7 +62,7 @@ fi
 
 #cd build
 
-SRCDIR=$(realpath build/hdf5-$VERSION/hdf5-$VERSION/)
+
 BUILDDIR=$(realpath build)
 
 rm -rf $BUILDDIR/jni
@@ -70,8 +70,6 @@ rm -f $BUILDDIR/libjhdf5.so
 cp -a jni $BUILDDIR/
 cp -a *.c $BUILDDIR/jni/
 cd $BUILDDIR
-cp $SRCDIR/src/H5win32defs.h $BUILDDIR/jni/
-cp $SRCDIR/src/H5private.h $BUILDDIR/jni/
 
 
 EDIR=$(ls "${BUILDDIR}" | grep -E '^hdf5-([0-9.]+)$')
@@ -97,6 +95,10 @@ fi
 # BDIR="$BUILDDIR/hdf5-$VERSION/build110/${CMAKE_PRESET}/"
 PDIR="${BUILDDIR}/${EDIR}/${RDIR}/${PDIR}/_CPack_Packages/Linux/TGZ/HDF5-${VERSION}-Linux/HDF_Group/HDF5/${VERSION}/"
 BDIR="${BUILDDIR}/${EDIR}/${RDIR}/${PDIR}"
+
+SRCDIR=$(realpath "${BUILDDIR}/${EDIR}/${EDIR}/")
+cp $SRCDIR/src/H5win32defs.h $BUILDDIR/jni/
+cp $SRCDIR/src/H5private.h $BUILDDIR/jni/
 
 
 rm -rf jhdf5*.std*.log jhdf5*.so
