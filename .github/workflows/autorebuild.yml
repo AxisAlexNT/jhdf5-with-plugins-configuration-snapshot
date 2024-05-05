@@ -51,25 +51,29 @@ jobs:
       run: ./compile_hdf5_linux_amd64.sh
       
     - name: JHDF5 (Linux)
+      continue-on-error: true
       working-directory: ./source/c
       run: ./compile_linux_amd64.sh
 
     - name: Compress build environment for debugging
       working-directory: . # Repository root
+      continue-on-error: true
       if: env.UPLOAD_DEBUG_ARCHIVE == 'true'
       run: | 
         tar -c . | zstd -z -T0 --adapt -v -o archive.tar.zst
         
     - name: Publish build artifacts
       uses: actions/upload-artifact@v3
+      continue-on-error: true
       if: env.UPLOAD_DEBUG_ARCHIVE == 'true'
       with:
         name: debug_archive
         path: |
           archive.tar.zst
 
-    - name: Generate latest release
+    - name: Release debug archive
       uses: marvinpinto/action-automatic-releases@latest
+      continue-on-error: true
       if: env.UPLOAD_DEBUG_ARCHIVE == 'true'
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
