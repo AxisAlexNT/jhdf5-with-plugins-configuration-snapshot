@@ -56,7 +56,7 @@ jobs:
           if [[ ! -d "${PDIR}" ]]; then
             echo "::warning title=Directory heuristic failed :: Still cannot find workflow build directory ${PDIR}"
           fi
-          tar -c "${EDIR}/${RDIR}/${CMAKE_WORKFLOW_PRESET}/" | zstd -z --adapt -T0 -v -o ./hdf5_package.tar.zst
+          tar -c "${PDIR}" | zstd -z --adapt -T0 -v -o ./hdf5_package.tar.zst
 
       - name: Compress lib directory
         working-directory: ./source/c/build

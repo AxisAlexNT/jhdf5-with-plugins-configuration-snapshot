@@ -131,7 +131,7 @@
         "HDF5_ENABLE_THREADSAFE": "OFF",
         "CMAKE_SHARED_LIBRARY_SUFFIX": "",
         "CMAKE_INSTALL_LIBDIR": "lib",
-        "HDF5_NO_PACKAGES": "ON"
+        "HDF5_NO_PACKAGES": "OFF"
       }
     },
     {
@@ -156,7 +156,10 @@
         "HDF5_BUILD_DOC": "OFF",
         "HDF5_PACK_EXAMPLES": "OFF",
         "H5_USE_110_API": "ON",
-        "DEFAULT_API_VERSION": "v110"
+        "DEFAULT_API_VERSION": "v110",
+        "CMAKE_SHARED_LIBRARY_SUFFIX": "",
+        "CMAKE_INSTALL_LIBDIR": "lib",
+        "HDF5_NO_PACKAGES": "ON"
       }
     },
     {
