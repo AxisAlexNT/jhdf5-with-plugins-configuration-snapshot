@@ -101,7 +101,7 @@ gcc \
 	-o libjhdf5_export_sharedlink.so -lz \
 		> >(tee -a jhdf5_export_sharedlink.stdout.log) 2> >(tee -a jhdf5_export_sharedlink.stderr.log >&2)
 
-mv libjhdf5_export_sharedlink.so libjhdf5.so
+cp -avf libjhdf5_export_sharedlink.so libjhdf5.so
 
 
 if [ -f libjhdf5.so ]; then
