@@ -11,19 +11,25 @@
       "generator": "Unix Makefiles",
       "cacheVariables": {
         "HDF5_ALLOW_EXTERNAL_SUPPORT": "TGZ",
-        "TGZPATH": {"type": "STRING", "value": "${sourceParentDir}/"}
+        "TGZPATH": {
+          "type": "STRING",
+          "value": "${sourceParentDir}/"
+        }
       }
     },
     {
       "name": "hict-StdCompression",
       "hidden": true,
-      "inherits": ["hict-base-tgz", "ci-CompressionVars"],
+      "inherits": [
+        "hict-base-tgz",
+        "ci-CompressionVars"
+      ],
       "generator": "Unix Makefiles",
       "cacheVariables": {
         "HDF5_PACKAGE_EXTLIBS": "ON",
         "ZLIB_USE_LOCALCONTENT": "OFF",
-	"HDF5_ENABLE_ZLIB_SUPPORT": "ON",
-	"HDF5_ENABLE_Z_LIB_SUPPORT": "ON",
+        "HDF5_ENABLE_ZLIB_SUPPORT": "ON",
+        "HDF5_ENABLE_Z_LIB_SUPPORT": "ON",
         "LIBAEC_USE_LOCALCONTENT": "OFF",
         "HDF5_ENABLE_SZIP_SUPPORT": "OFF",
         "HDF5_ENABLE_SZIP_ENCODING": "OFF"
@@ -33,22 +39,26 @@
       "name": "hict-StdPlugins",
       "hidden": true,
       "generator": "Unix Makefiles",
-      "inherits": ["ci-base-plugins", "ci-PluginsVars", "hict-base-tgz"],
+      "inherits": [
+        "ci-base-plugins",
+        "ci-PluginsVars",
+        "hict-base-tgz"
+      ],
       "cacheVariables": {
-	  "HDF5_ENABLE_PLUGIN_SUPPORT": "ON",
-	  "HDF5_ENABLE_LZF_SUPPORT": "ON",
-	  "HDF5_ENABLE_BSHUF_SUPPORT": "ON",
-	  "HDF5_ENABLE_LZ4_SUPPORT": "ON",
-          "HDF5_ENABLE_BLOSC_SUPPORT": "ON",
-          "HDF5_ENABLE_BLOSC": "ON",
-          "H5PL_ALLOW_EXTERNAL_SUPPORT": "TGZ",
-          "ENABLE_BLOSC": "ON",
-          "ENABLE_LZF": "ON",
-          "ENABLE_LZ4": "ON",
-          "ENABLE_BSHUF": "ON",
-          "H5PL_VERS_MAJOR": "1",
-          "H5PL_VERS_MINOR": "10",
-          "H5PL_VERS_RELEASE": "11"
+        "HDF5_ENABLE_PLUGIN_SUPPORT": "ON",
+        "HDF5_ENABLE_LZF_SUPPORT": "ON",
+        "HDF5_ENABLE_BSHUF_SUPPORT": "ON",
+        "HDF5_ENABLE_LZ4_SUPPORT": "ON",
+        "HDF5_ENABLE_BLOSC_SUPPORT": "ON",
+        "HDF5_ENABLE_BLOSC": "ON",
+        "H5PL_ALLOW_EXTERNAL_SUPPORT": "TGZ",
+        "ENABLE_BLOSC": "ON",
+        "ENABLE_LZF": "ON",
+        "ENABLE_LZ4": "ON",
+        "ENABLE_BSHUF": "ON",
+        "H5PL_VERS_MAJOR": "1",
+        "H5PL_VERS_MINOR": "10",
+        "H5PL_VERS_RELEASE": "11"
       }
     },
     {
@@ -56,17 +66,33 @@
       "hidden": true,
       "generator": "Unix Makefiles",
       "cacheVariables": {
-        "HDF5_EXAMPLES_COMPRESSED": {"type": "STRING", "value": "hdf5-examples-2.0.4.tar.gz"},
-        "HDF5_EXAMPLES_COMPRESSED_DIR": {"type": "STRING", "value": "${sourceParentDir}/"},
-        "EXAMPLES_TGZ_ORIGPATH": {"type": "STRING", "value": "https://github.com/HDFGroup/hdf5-examples/archive/refs/tags/"},
-        "EXAMPLES_TGZ_ORIGNAME": {"type": "STRING", "value": "2.0.4.tar.gz"}
+        "HDF5_EXAMPLES_COMPRESSED": {
+          "type": "STRING",
+          "value": "hdf5-examples-2.0.4.tar.gz"
+        },
+        "HDF5_EXAMPLES_COMPRESSED_DIR": {
+          "type": "STRING",
+          "value": "${sourceParentDir}/"
+        },
+        "EXAMPLES_TGZ_ORIGPATH": {
+          "type": "STRING",
+          "value": "https://github.com/HDFGroup/hdf5-examples/archive/refs/tags/"
+        },
+        "EXAMPLES_TGZ_ORIGNAME": {
+          "type": "STRING",
+          "value": "2.0.4.tar.gz"
+        }
       }
     },
     {
       "name": "hict-StdExamples",
       "hidden": true,
       "generator": "Unix Makefiles",
-      "inherits": ["ci-base", "hict-ExamplesVars", "hict-base-tgz"],
+      "inherits": [
+        "ci-base",
+        "hict-ExamplesVars",
+        "hict-base-tgz"
+      ],
       "cacheVariables": {
         "EXAMPLES_USE_RELEASE_NAME": "ON",
         "EXAMPLES_USE_LOCALCONTENT": "ON",
@@ -77,10 +103,17 @@
     {
       "name": "hict-StdShar",
       "hidden": true,
-      "inherits": ["hict-StdCompression", "hict-StdExamples", "hict-StdPlugins"],
+      "inherits": [
+        "hict-StdCompression",
+        "hict-StdExamples",
+        "hict-StdPlugins"
+      ],
       "generator": "Unix Makefiles",
       "cacheVariables": {
-        "HDF_PACKAGE_NAMESPACE": {"type": "STRING", "value": "hdf5::"},
+        "HDF_PACKAGE_NAMESPACE": {
+          "type": "STRING",
+          "value": "hdf5::"
+        },
         "HDF5_INSTALL_MOD_FORTRAN": "NO",
         "HDF5_BUILD_GENERATORS": "ON",
         "HDF5_BUILD_JAVA": "ON",
@@ -90,21 +123,30 @@
         "H5_USE_110_API": "ON",
         "HDF5_USE_110_API": "ON",
         "DEFAULT_API_VERSION": "v110",
-	"HDF5_BUILD_SHARED": "ON",
-	"HDF5_BUILD_ONLY_SHARED": "ON",
-	"BUILD_SHARED_LIBS": "ON",
-	"ONLY_SHARED_LIBS": "ON",
-	"HDF5_ENABLE_PARALLEL": "OFF",
-	"HDF5_ENABLE_THREADSAFE": "OFF"
+        "HDF5_BUILD_SHARED": "ON",
+        "HDF5_BUILD_ONLY_SHARED": "ON",
+        "BUILD_SHARED_LIBS": "ON",
+        "ONLY_SHARED_LIBS": "ON",
+        "HDF5_ENABLE_PARALLEL": "OFF",
+        "HDF5_ENABLE_THREADSAFE": "OFF",
+        "CMAKE_SHARED_LIBRARY_SUFFIX": "",
+        "CMAKE_INSTALL_LIBDIR": "lib",
+        "HDF5_NO_PACKAGES": "ON"
       }
     },
     {
       "name": "hict-StdShar-noexamples",
       "hidden": true,
-      "inherits": ["hict-StdCompression", "hict-StdPlugins"],
+      "inherits": [
+        "hict-StdCompression",
+        "hict-StdPlugins"
+      ],
       "generator": "Unix Makefiles",
       "cacheVariables": {
-        "HDF_PACKAGE_NAMESPACE": {"type": "STRING", "value": "hdf5::"},
+        "HDF_PACKAGE_NAMESPACE": {
+          "type": "STRING",
+          "value": "hdf5::"
+        },
         "HDF5_INSTALL_MOD_FORTRAN": "NO",
         "HDF5_BUILD_GENERATORS": "ON",
         "HDF5_ENABLE_ALL_WARNINGS": "ON",
@@ -208,7 +250,7 @@
       "configurePreset": "hict-StdShar-GNUC",
       "inherits": "ci-x64-Release-GNUC",
       "output": {
-        "debug":false,
+        "debug": false,
         "verbose": false
       }
     },
@@ -217,7 +259,7 @@
       "configurePreset": "hict-StdShar-GNUC-noexamples",
       "inherits": "ci-x64-Release-GNUC",
       "output": {
-        "debug":false,
+        "debug": false,
         "verbose": false
       }
     }
@@ -226,41 +268,86 @@
     {
       "name": "hict-StdShar-MSVC",
       "steps": [
-        {"type": "configure", "name": "hict-StdShar-MSVC"},
-        {"type": "build", "name": "hict-StdShar-MSVC"},
-        {"type": "test", "name": "hict-StdShar-MSVC"},
-        {"type": "package", "name": "hict-StdShar-MSVC"}
+        {
+          "type": "configure",
+          "name": "hict-StdShar-MSVC"
+        },
+        {
+          "type": "build",
+          "name": "hict-StdShar-MSVC"
+        },
+        {
+          "type": "test",
+          "name": "hict-StdShar-MSVC"
+        },
+        {
+          "type": "package",
+          "name": "hict-StdShar-MSVC"
+        }
       ]
     },
     {
       "name": "hict-StdShar-GNUC",
       "steps": [
-        {"type": "configure", "name": "hict-StdShar-GNUC"},
-        {"type": "build", "name": "hict-StdShar-GNUC"},
-        {"type": "test", "name": "hict-StdShar-GNUC"},
-        {"type": "package", "name": "hict-StdShar-GNUC"}
+        {
+          "type": "configure",
+          "name": "hict-StdShar-GNUC"
+        },
+        {
+          "type": "build",
+          "name": "hict-StdShar-GNUC"
+        },
+        {
+          "type": "test",
+          "name": "hict-StdShar-GNUC"
+        },
+        {
+          "type": "package",
+          "name": "hict-StdShar-GNUC"
+        }
       ]
     },
     {
       "name": "hict-StdShar-MSVC-notest",
       "steps": [
-        {"type": "configure", "name": "hict-StdShar-MSVC"},
-        {"type": "build", "name": "hict-StdShar-MSVC"}
+        {
+          "type": "configure",
+          "name": "hict-StdShar-MSVC"
+        },
+        {
+          "type": "build",
+          "name": "hict-StdShar-MSVC"
+        }
       ]
     },
     {
       "name": "hict-StdShar-GNUC-notest",
       "steps": [
-        {"type": "configure", "name": "hict-StdShar-GNUC"},
-        {"type": "build", "name": "hict-StdShar-GNUC"}
+        {
+          "type": "configure",
+          "name": "hict-StdShar-GNUC"
+        },
+        {
+          "type": "build",
+          "name": "hict-StdShar-GNUC"
+        }
       ]
     },
     {
       "name": "hict-StdShar-GNUC-notest-noexamples",
       "steps": [
-        {"type": "configure", "name": "hict-StdShar-GNUC-noexamples"},
-        {"type": "build", "name": "hict-StdShar-GNUC-noexamples"},
-        {"type": "package", "name": "hict-StdShar-GNUC-noexamples"}
+        {
+          "type": "configure",
+          "name": "hict-StdShar-GNUC-noexamples"
+        },
+        {
+          "type": "build",
+          "name": "hict-StdShar-GNUC-noexamples"
+        },
+        {
+          "type": "package",
+          "name": "hict-StdShar-GNUC-noexamples"
+        }
       ]
     }
   ]

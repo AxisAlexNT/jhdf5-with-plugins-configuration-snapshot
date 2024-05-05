@@ -124,7 +124,7 @@ gcc \
 cp -avf libjhdf5_export_sharedlink.so libjhdf5.so
 
 if [ -f libjhdf5.so ]; then
-  cp -pf $BUILDDIR/libjhdf5.so $BUILDDIR/../../../libs/native/jhdf5/amd64-Linux/
+  cp -af $BUILDDIR/libjhdf5.so $BUILDDIR/../../../libs/native/jhdf5/amd64-Linux/
   echo "Build OK"
 else
   echo "ERROR"

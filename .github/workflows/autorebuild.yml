@@ -10,6 +10,286 @@ jobs:
   build-hdf5-linux:
     runs-on: ubuntu-latest
 
+    steps:
+      - name: Check presence of tools
+        shell: bash
+        run: |
+          set -ex
+          zstd --help
+          xz --help
+          tar --help
+          gcc --version
+          cmake --help
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set environment variables for HDF5 build
+        run: |
+          echo "UPLOAD_DEBUG_ARCHIVE=true" >> $GITHUB_ENV
+          echo "REPLACE_JNI=0" >> $GITHUB_ENV
+      
+      - name: Compile HDF5 + Plugins (Linux)
+        working-directory: ./source/c
+        run: ./compile_hdf5_linux_amd64.sh
+
+      - name: Compress built HDF5
+        working-directory: ./source/c
+        shell: bash
+        run: |
+          tar -C build -c hdf5-*/build110/hict-StdShar-GNUC/ | zstd -z --adapt -T0 -v -o ./hdf5_package.tar.zst
+
+      - name: Compress lib directory
+        working-directory: ./source/c/build
+        shell: bash
+        run: |
+          tar -c lib | zstd -z --adapt -T0 -v -o ./hdf5_lib.tar.zst
+
+      - name: 'Artifact upload: HDF5 built libraries (Linux)'
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: hdf5_linux_lib
+          path: './source/c/build/lib'
+          compression-level: 9
+          if-no-files-found: error
+      
+      - name: 'Artifact upload: HDF5 built library package (Linux)'
+        uses: actions/upload-artifact@v4
+        with:
+          name: hdf5_linux_lib_package
+          path: './source/c/build/hdf5_lib.tar.zst'
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: 'Artifact upload: HDF5 built package (Linux)'
+        uses: actions/upload-artifact@v4
+        with:
+          name: hdf5_linux_package
+          path: './source/c/hdf5_package.tar.zst'
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: Generate debug archive for failed jobs
+        if: ${{ failure() }}
+        run: tar -c . | zstd -z -T0 --adapt -v -o debug.tar.zst
+
+      - name: Upload debug artifact
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          path: debug.tar.zst
+          name: debug-archive-${{ env.JOB_NAME }}
+          compression-level: 0
+          if-no-files-found: error
+      
+  build-jhdf5-linux:
+    runs-on: ubuntu-latest
+
+    needs:
+      - build-hdf5-linux
+    
+    steps:
+      - name: Check presence of tools
+        shell: bash
+        run: |
+          set -ex
+          zstd --help
+          xz --help
+          tar --help
+          gcc --version
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 'Artifact download: HDF5 built package (Linux)'
+        uses: actions/download-artifact@v4
+        with:
+          name: hdf5_linux_package
+          path: './source/c/hdf5_package.tar.zst'
+
+      - name: Decompress built HDF5
+        working-directory: ./source/c
+        shell: bash
+        run: |
+          set -ex
+          mkdir build || true
+          pushd build
+          zstd -d -c -v -T0 hdf5_package.tar.zst | tar -xv
+          popd
+
+      - name: Setup JDK 8
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '8'
+          java-package: 'jdk'
+
+      - name: Set environment variables for HDF5 build
+        run: |
+          echo "JHDF5_ADDITIONAL_GCC_FLAGS=-O3 -march=haswell -mtune=znver3 -Wl,--exclude-libs,ALL" >> $GITHUB_ENV
+          JAVA_PATH="$(which java)"
+          JAVA_BIN_PATH=$(dirname "${JAVA_PATH}")
+          JAVA_HOME_PATH=$(dirname "${JAVA_BIN_PATH}")
+          if [[ -z ${JAVA_HOME+x} ]]; then
+            echo "JAVA_HOME=${JAVA_HOME_PATH}" >> $GITHUB_ENV
+          fi
+          echo "JVM_INCLUDE_PATH=${JAVA_HOME_PATH}/include" >> $GITHUB_ENV
+      
+      - name: Build JHDF5
+        working-directory: ./source/c
+        shell: bash
+        run: |
+          ./compile_linux_amd64.sh
+
+      - name: Upload libjhdf5.so
+        uses: actions/upload-artifact@v4
+        with:
+          name: jhdf5_so_linux
+          path: './source/c/build/libjhdf5.so'
+          compression-level: 9
+          if-no-files-found: error
+
+      - name: Generate debug archive for failed jobs
+        if: ${{ failure() }}
+        run: tar -c . | zstd -z -T0 --adapt -v -o debug.tar.zst
+
+      - name: Upload debug artifact
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          path: debug.tar.zst
+          name: debug-archive-${{ env.JOB_NAME }}
+          compression-level: 0
+          if-no-files-found: error
+
+  build-jhdf5-java:
+    runs-on: ubuntu-latest
+    needs:
+      - build-jhdf5-linux
+
+    steps:
+      - name: Check presence of tools
+        shell: bash
+        run: |
+          set -ex
+          zstd --help
+          xz --help
+          tar --help
+          gcc --version
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 'Artifact download: JHDF5 dynamic library (Linux)'
+        uses: actions/download-artifact@v4
+        with:
+          name: jhdf5_so_linux
+          path: libs/native/jhdf5/amd64-Linux/
+
+      - name: 'Artifact download: HDF5 library objects (Linux)'
+        uses: actions/download-artifact@v4
+        with:
+          name: hdf5_linux_lib
+          path: libs/native/jhdf5/amd64-Linux/
+
+      - name: Decompress built HDF5
+        working-directory: ./source/c
+        shell: bash
+        run: |
+          set -ex
+          mkdir build || true
+          pushd build
+          zstd -d -c -v -T0 hdf5_package.tar.zst | tar -xv
+          popd
+
+      - name: Setup JDK 8
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '8'
+          java-package: 'jdk'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build with Gradle
+        run: ./gradlew build
+
+      - name: Upload Gradle build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: jhdf5_java
+          path: build/libs
+
+      - name: Generate debug archive for failed jobs
+        if: ${{ failure() }}
+        run: tar -c . | zstd -z -T0 --adapt -v -o debug.tar.zst
+
+      - name: Upload debug artifact
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          path: debug.tar.zst
+          name: debug-archive-${{ env.JOB_NAME }}
+          compression-level: 0
+          if-no-files-found: error
+
+
+  release:
+    runs-on: ubuntu-latest
+    needs:
+      - build-hdf5-linux
+      - build-jhdf5-linux
+      - build-jhdf5-java
+
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: 'Artifact download: HDF5 built package (Linux)'
+        uses: actions/download-artifact@v4
+        with:
+          name: hdf5_linux_package
+      
+      - name: 'Artifact download: HDF5 library package (Linux)'
+        uses: actions/download-artifact@v4
+        with:
+          name: hdf5_linux_lib_package
+
+      - name: 'Artifact download: JHDF5 dynamic library (Linux)'
+        uses: actions/download-artifact@v4
+        with:
+          name: jhdf5_so_linux
+
+      - name: Release built artifacts
+        uses: marvinpinto/action-automatic-releases@latest
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          automatic_release_tag: release-artifacts
+          prerelease: true
+          title: "All built artifacts"
+          files: |
+            **
+
+      - name: Generate debug archive for failed jobs
+        if: ${{ failure() }}
+        run: tar -c . | zstd -z -T0 --adapt -v -o debug.tar.zst
+
+      - name: Upload debug artifact
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          path: debug.tar.zst
+          name: debug-archive-${{ env.JOB_NAME }}
+          compression-level: 0
+          if-no-files-found: error
+
+
+  build-hdf5-linux-all:
+    runs-on: ubuntu-latest
+
     permissions:
       contents: write
       packages: write
@@ -34,6 +314,9 @@ jobs:
         
     - name: Checkout repository
       uses: actions/checkout@v4
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
       
     - name: Set environment variables for HDF5 build
       run: |
@@ -60,6 +343,16 @@ jobs:
       working-directory: ./source/c
       run: ./compile_linux_amd64.sh
 
+    - name: Build with Gradle
+      continue-on-error: true
+      run: ./gradlew build
+
+    - name: Upload Gradle build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: jhdf5_java_global
+        path: build/libs
+
     - name: Compress build environment for debugging
       working-directory: . # Repository root
       continue-on-error: true
@@ -72,7 +365,7 @@ jobs:
       continue-on-error: true
       if: env.UPLOAD_DEBUG_ARCHIVE == 'true'
       with:
-        name: debug_archive
+        name: debug_archive_global
         path: |
           archive.tar.zst
 
