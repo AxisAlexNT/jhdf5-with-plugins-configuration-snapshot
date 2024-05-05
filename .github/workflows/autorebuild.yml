@@ -162,6 +162,12 @@ jobs:
           echo "JVM_INCLUDE_PATH=${JAVA_HOME_PATH}/include" >> $GITHUB_ENV
           echo "VERSION=1.10.11" >> $GITHUB_ENV
           echo "CMAKE_WORKFLOW_PRESET=hict-StdShar-GNUC" >> $GITHUB_ENV
+
+      - name: 'Artifact download: HDF5 built package (Linux)'
+        uses: actions/download-artifact@v4
+        with:
+          name: hdf5_linux_lib
+          path: './source/c/jni/'
       
       - name: Build JHDF5
         working-directory: ./source/c
