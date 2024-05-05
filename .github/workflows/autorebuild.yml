@@ -57,7 +57,13 @@ jobs:
           if [[ ! -d "${PDIR}" ]]; then
             echo "::error title=Directory heuristic failed :: Still cannot find workflow build directory ${PDIR}"
           fi
+          mkdir lib
+          echo "Copying shared objects..."
+          mkdir -p lib
+          find "${PDIR}" -type f -name '*.so' -print0 | xargs -n1 cp -aRf -t lib/
+          echo "Compressing HDF5 package..."
           tar -C "${PDIR}" -c . | zstd -z --adapt -T0 -v -o ./hdf5_package.tar.zst
+          echo "DONE"
 
       - name: 'Artifact upload: HDF5 built package (Linux)'
         uses: actions/upload-artifact@v4
@@ -67,11 +73,11 @@ jobs:
           compression-level: 0
           if-no-files-found: error
 
-      - name: Compress lib directory
+      - name: Create and compress lib directory
         working-directory: ./source/c/build
         shell: bash
         run: |
-          tar -c lib | zstd -z --adapt -T0 -v -o ./hdf5_lib.tar.zst
+          tar -C lib -c . | zstd -z --adapt -T0 -v -o ./hdf5_lib.tar.zst
 
       - name: 'Artifact upload: HDF5 built libraries (Linux)'
         uses: actions/upload-artifact@v4
