@@ -20,10 +20,18 @@ HDF5_USE_AUTOTOOLS=""
 # Should java/src/jni folder be overwritten by JHDF5 patches?
 if [ -z ${REPLACE_JNI+x} ]; then  
 	REPLACE_JNI="0"
- 	echo "REPLACE_JNI variable was not provided in environment, default set to no (0)"
- else 
- 	echo "REPLACE_JNI variable is provided and is set to $REPLACE_JNI"
- fi
+ 	echo "::warning ::REPLACE_JNI variable was not provided in environment, default set to ${REPLACE_JNI}"
+else 
+	echo "::notice ::REPLACE_JNI variable is provided and is set to ${REPLACE_JNI}"
+fi
+
+
+if [ -z ${CMAKE_PRESET+x} ]; then  
+	CMAKE_PRESET="hict-StdShar-GNUC-notest"
+	echo "::warning ::CMAKE_PRESET variable was not provided in environment, default set to ${CMAKE_PRESET}"
+else 
+	echo "::notice ::CMAKE_PRESET variable is provided and is set to ${CMAKE_PRESET}"
+fi
 
 export PATH="/opt/cmake/bin:/opt/cmake:$PATH"
 

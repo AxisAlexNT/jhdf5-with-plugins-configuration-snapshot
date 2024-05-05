@@ -28,6 +28,7 @@ jobs:
         run: |
           echo "UPLOAD_DEBUG_ARCHIVE=true" >> $GITHUB_ENV
           echo "REPLACE_JNI=0" >> $GITHUB_ENV
+          echo "CMAKE_WORKFLOW_PRESET=hict-StdShar-GNUC-notest" >> $GITHUB_ENV
       
       - name: Compile HDF5 + Plugins (Linux)
         working-directory: ./source/c
@@ -45,7 +46,7 @@ jobs:
           if [[ ! -d "${EDIR}/${RDIR}" ]]; then
             echo "::error title=Cannot find build subdirectory ::Cannot find build subdirectory (detected ${RDIR}) for HDF5 version out of $(ls)"
           fi
-          tar -c "${EDIR}/${RDIR}/hict-StdShar-GNUC/" | zstd -z --adapt -T0 -v -o ./hdf5_package.tar.zst
+          tar -c "${EDIR}/${RDIR}/${CMAKE_WORKFLOW_PRESET}/" | zstd -z --adapt -T0 -v -o ./hdf5_package.tar.zst
 
       - name: Compress lib directory
         working-directory: ./source/c/build
@@ -79,15 +80,15 @@ jobs:
           if-no-files-found: error
 
       - name: Generate debug archive for failed jobs
-        if: ${{ always() }}
+        if: always()
         run: tar -c . | zstd -z -T0 --adapt -v -o debug.tar.zst
 
       - name: Upload debug artifact
-        if: ${{ always() }}
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           path: debug.tar.zst
-          name: debug-archive-${{ env.JOB_NAME }}
+          name: debug-archive-${{ github.job }}
           compression-level: 0
           if-no-files-found: error
       
@@ -159,15 +160,15 @@ jobs:
           if-no-files-found: error
 
       - name: Generate debug archive for failed jobs
-        if: ${{ failure() }}
+        if: always()
         run: tar -c . | zstd -z -T0 --adapt -v -o debug.tar.zst
 
       - name: Upload debug artifact
-        if: ${{ failure() }}
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           path: debug.tar.zst
-          name: debug-archive-${{ env.JOB_NAME }}
+          name: debug-archive-${{ github.job }}
           compression-level: 0
           if-no-files-found: error
 
@@ -231,15 +232,15 @@ jobs:
           path: build/libs
 
       - name: Generate debug archive for failed jobs
-        if: ${{ failure() }}
+        if: always()
         run: tar -c . | zstd -z -T0 --adapt -v -o debug.tar.zst
 
       - name: Upload debug artifact
-        if: ${{ failure() }}
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           path: debug.tar.zst
-          name: debug-archive-${{ env.JOB_NAME }}
+          name: debug-archive-${{ github.job }}
           compression-level: 0
           if-no-files-found: error
 
@@ -290,7 +291,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           path: debug.tar.zst
-          name: debug-archive-${{ env.JOB_NAME }}
+          name: debug-archive-${{ github.job }}
           compression-level: 0
           if-no-files-found: error
 
