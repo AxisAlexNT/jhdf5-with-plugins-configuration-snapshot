@@ -109,8 +109,8 @@ fi
 gcc \
 	-shared \
  	-fPIC \
- 	$JHDF5_ADDITIONAL_GCC_FLAGS \  	
-	$BUILDDIR/jni/*.c  \
+ 	$JHDF5_ADDITIONAL_GCC_FLAGS \
+	$BUILDDIR/jni/*.c \
 	-I"$PDIR/include" \
 	-I$BDIR/src \
 	-I$SRCDIR/src \
