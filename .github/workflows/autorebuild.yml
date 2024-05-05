@@ -250,6 +250,11 @@ jobs:
         run: |
           chmod +x gradlew
 
+      - name: Generate wrapper
+        shell: bash
+        run: |
+          gradle wrapper
+
       - name: Build with Gradle
         run: ./gradlew build --debug
 
