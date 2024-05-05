@@ -147,7 +147,7 @@ gcc \
 	-I$SRCDIR/src \
 	-I$JVM_INCLUDE_PATH \
 	-I$JVM_INCLUDE_PATH/linux \
-	-L"$BDIR/bin" -l:libhdf5.so \
+	-L"$BDIR/bin" -L. -l:libhdf5.so \
 	$(find $BDIR -type f -name "*.a" | xargs -n1 realpath) \
 	-o libjhdf5_export_sharedlink.so -lz \
 		> >(tee -a jhdf5_export_sharedlink.stdout.log) 2> >(tee -a jhdf5_export_sharedlink.stderr.log >&2)
