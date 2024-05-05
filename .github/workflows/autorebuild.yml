@@ -82,7 +82,7 @@ jobs:
       if: env.UPLOAD_DEBUG_ARCHIVE == 'true'
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        automatic_release_tag: debug
+        automatic_release_tag: debug-global
         prerelease: true
         title: "Debugging archive"
         files: |
