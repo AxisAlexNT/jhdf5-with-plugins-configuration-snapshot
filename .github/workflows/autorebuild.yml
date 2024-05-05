@@ -10,6 +10,15 @@ jobs:
   build-hdf5-linux:
     runs-on: ubuntu-latest
     steps:
+
+    - name: Check presence of tools
+      shell: bash
+      run: |
+        set -ex
+        zstd --help
+        xz --help
+        tar --help
+        gcc --version
     
     - name: Setup JDK 8
       uses: actions/setup-java@v4
