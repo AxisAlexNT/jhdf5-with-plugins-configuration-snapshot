@@ -14,7 +14,7 @@ BUILD_HDF5_PLUGINS=""
 
 CMAKE_HDF5="1"
 HDF5_CLEAN="1"
-CMAKE_PRESET="hict-StdShar-GNUC-notest"
+# CMAKE_PRESET="hict-StdShar-GNUC-notest"
 HDF5_USE_AUTOTOOLS=""
 
 # Should java/src/jni folder be overwritten by JHDF5 patches?
@@ -27,7 +27,7 @@ fi
 
 
 if [ -z ${CMAKE_PRESET+x} ]; then  
-	CMAKE_PRESET="hict-StdShar-GNUC-notest"
+	CMAKE_PRESET="hict-StdShar-GNUC"
 	echo "::warning ::CMAKE_PRESET variable was not provided in environment, default set to ${CMAKE_PRESET}"
 else 
 	echo "::notice ::CMAKE_PRESET variable is provided and is set to ${CMAKE_PRESET}"

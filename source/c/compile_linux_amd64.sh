@@ -12,21 +12,28 @@ source version.sh
 if [ -z ${JHDF5_ADDITIONAL_GCC_FLAGS+x} ]; then	
 	JHDF5_ADDITIONAL_GCC_FLAGS="-O3 -march=haswell -mtune=znver3 -Wl,--exclude-libs,ALL"
  	echo "JHDF5_ADDITIONAL_GCC_FLAGS variable was not provided in environment, default set to ${JHDF5_ADDITIONAL_GCC_FLAGS}"
- else 
+else 
  	echo "JHDF5_ADDITIONAL_GCC_FLAGS variable is provided and is set to ${JHDF5_ADDITIONAL_GCC_FLAGS}"
- fi
+fi
 
 if [ -z ${JVM_INCLUDE_PATH+x} ]; then	
 	JVM_INCLUDE_PATH="/usr/lib/jvm/java-8-openjdk-amd64/include/"
  	echo "JVM_INCLUDE_PATH variable was not provided in environment, default set to ${JVM_INCLUDE_PATH}"
- else 
+else 
  	echo "JVM_INCLUDE_PATH variable is provided and is set to ${JVM_INCLUDE_PATH}"
- fi
+fi
 
- if [[ ! -d "${SCRIPT_PATH}" ]]; then
+if [[ ! -d "${SCRIPT_PATH}" ]]; then
 	"::error file=${SCRIPT_PATH},line=28::JVM Include directory (${SCRIPT_PATH}) does not exist, build will fail."
  	exit 1
- fi
+fi
+
+if [ -z ${CMAKE_PRESET+x} ]; then  
+	CMAKE_PRESET="hict-StdShar-GNUC"
+	echo "::warning ::CMAKE_PRESET variable was not provided in environment, default set to ${CMAKE_PRESET}"
+else 
+	echo "::notice ::CMAKE_PRESET variable is provided and is set to ${CMAKE_PRESET}"
+fi
 
 if [ -n "$POSTFIX" ]; then
   VERSION="$VERSION-$POSTFIX"
@@ -66,8 +73,30 @@ cd $BUILDDIR
 cp $SRCDIR/src/H5win32defs.h $BUILDDIR/jni/
 cp $SRCDIR/src/H5private.h $BUILDDIR/jni/
 
-PDIR="$BUILDDIR/hdf5-$VERSION/build110/hict-StdShar-GNUC/_CPack_Packages/Linux/TGZ/HDF5-1.10.11-Linux/HDF_Group/HDF5/1.10.11/"
-BDIR="$BUILDDIR/hdf5-$VERSION/build110/hict-StdShar-GNUC/"
+
+EDIR=$(ls "${BUILDDIR}" | grep -E '^hdf5-([0-9.]+)$')
+if [[ ! -d "${EDIR}" ]]; then
+	echo "::error title=Cannot find build directory ::Cannot find build directory (detected ${EDIR}) for HDF5 version out of $(ls)"
+fi
+RDIR=$(ls "${BUILDDIR}/${EDIR}" | grep -E '^build([0-9]+)$')
+if [[ ! -d "${BUILDDIR}/${EDIR}/${RDIR}" ]]; then
+	echo "::error title=Cannot find build subdirectory ::Cannot find build subdirectory (detected ${RDIR}) for HDF5 version out of $(ls)"
+fi
+PDIR="${CMAKE_WORKFLOW_PRESET}"
+if [[ ! -d "${BUILDDIR}/${EDIR}/${RDIR}/${PDIR}" ]]; then
+	CDIR=$(ls "${BUILDDIR}/${EDIR}/${RDIR}" | head -n 1)
+	OLD_PDIR="${PDIR}"
+	PDIR="${CDIR}/"
+	echo "::warning title=Cannot find workflow subdirectory ::Cannot find directory ${OLD_PDIR}, changed to ${PDIR}"
+fi
+if [[ ! -d "${BUILDDIR}/${EDIR}/${RDIR}/${PDIR}" ]]; then
+	echo "::error title=Directory heuristic failed ::Still cannot find workflow build directory ${PDIR}"
+fi
+
+# PDIR="$BUILDDIR/hdf5-$VERSION/build110/${CMAKE_PRESET}/_CPack_Packages/Linux/TGZ/HDF5-1.10.11-Linux/HDF_Group/HDF5/1.10.11/"
+# BDIR="$BUILDDIR/hdf5-$VERSION/build110/${CMAKE_PRESET}/"
+PDIR="${BUILDDIR}/${EDIR}/${RDIR}/${PDIR}/_CPack_Packages/Linux/TGZ/HDF5-${VERSION}-Linux/HDF_Group/HDF5/${VERSION}/"
+BDIR="${BUILDDIR}/${EDIR}/${RDIR}/${PDIR}"
 
 
 rm -rf jhdf5*.std*.log jhdf5*.so

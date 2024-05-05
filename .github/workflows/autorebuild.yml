@@ -28,7 +28,7 @@ jobs:
         run: |
           echo "UPLOAD_DEBUG_ARCHIVE=true" >> $GITHUB_ENV
           echo "REPLACE_JNI=0" >> $GITHUB_ENV
-          echo "CMAKE_WORKFLOW_PRESET=hict-StdShar-GNUC-notest" >> $GITHUB_ENV
+          echo "CMAKE_WORKFLOW_PRESET=hict-StdShar-GNUC" >> $GITHUB_ENV
       
       - name: Compile HDF5 + Plugins (Linux)
         working-directory: ./source/c
@@ -61,7 +61,7 @@ jobs:
           echo "Copying shared objects..."
           find "${PDIR}" -type f -name '*.so' -print0 | xargs --null -n1 cp -vf -t lib/
           echo "Compressing HDF5 package..."
-          tar -C "${PDIR}" -c . | zstd -z --adapt -T0 -v -o ./hdf5_package.tar.zst
+          tar -c "${PDIR}" | zstd -z --adapt -T0 -v -o ./hdf5_package.tar.zst
           echo "DONE"
 
       - name: 'Artifact upload: HDF5 built package (Linux)'
@@ -160,6 +160,8 @@ jobs:
             echo "JAVA_HOME=${JAVA_HOME_PATH}" >> $GITHUB_ENV
           fi
           echo "JVM_INCLUDE_PATH=${JAVA_HOME_PATH}/include" >> $GITHUB_ENV
+          echo "VERSION=1.10.11" >> $GITHUB_ENV
+          echo "CMAKE_WORKFLOW_PRESET=hict-StdShar-GNUC" >> $GITHUB_ENV
       
       - name: Build JHDF5
         working-directory: ./source/c
