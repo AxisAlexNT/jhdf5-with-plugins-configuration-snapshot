@@ -133,7 +133,7 @@
           "type": "STRING",
           "value": ""
         },
-        "CMAKE_PLATFORM_NO_VERSIONED_SONAME": "NO",
+        "CMAKE_PLATFORM_NO_VERSIONED_SONAME": "ON",
         "HDF5_USE_GNU_DIRS": "ON",
         "CMAKE_INSTALL_LIBDIR": "lib",
         "HDF5_NO_PACKAGES": "ON"
