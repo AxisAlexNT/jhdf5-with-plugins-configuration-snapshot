@@ -131,7 +131,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: hdf5_linux_package
-          path: './source/c/hdf5_package.tar.zst'
+          path: './source/c/'
 
       - name: Decompress built HDF5
         working-directory: ./source/c
