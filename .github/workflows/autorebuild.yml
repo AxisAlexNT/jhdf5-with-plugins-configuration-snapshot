@@ -46,6 +46,16 @@ jobs:
           if [[ ! -d "${EDIR}/${RDIR}" ]]; then
             echo "::error title=Cannot find build subdirectory ::Cannot find build subdirectory (detected ${RDIR}) for HDF5 version out of $(ls)"
           fi
+          PDIR="${EDIR}/${RDIR}/${CMAKE_WORKFLOW_PRESET}/"
+          if [[ ! -d "${PDIR}" ]]; then
+            CDIR=$(ls "${EDIR}/${RDIR}" | head -n 1)
+            OLD_PDIR="${PDIR}"
+            PDIR="${EDIR}/${RDIR}/${CDIR}/"
+            echo "::warning title=Cannot find workflow subdirectory ::Cannot find directory ${OLD_PDIR}, changed to ${PDIR}"
+          fi
+          if [[ ! -d "${PDIR}" ]]; then
+          echo "::warning title=Directory heuristic failed :: Still cannot find workflow build directory ${PDIR}"
+          fi
           tar -c "${EDIR}/${RDIR}/${CMAKE_WORKFLOW_PRESET}/" | zstd -z --adapt -T0 -v -o ./hdf5_package.tar.zst
 
       - name: Compress lib directory
