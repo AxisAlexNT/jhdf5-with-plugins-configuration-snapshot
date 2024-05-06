@@ -251,19 +251,19 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Fix permissions
-        shell: bash
-        run: |
-          chmod +x gradlew
+      # - name: Fix permissions
+      #   shell: bash
+      #   run: |
+      #     chmod +x gradlew
 
-      - name: Generate wrapper
-        shell: bash
-        run: |
-          gradle wrapper
+      # - name: Generate wrapper
+      #   shell: bash
+      #   run: |
+      #     gradle wrapper
 
       - name: Build with Gradle
         shell: bash
-        run: ./gradlew build --debug -Dorg.gradle.java.home="${JAVA_HOME_8_X64}"
+        run: gradle build --debug -Dorg.gradle.java.home="${JAVA_HOME_8_X64}"
 
       - name: Upload Gradle build artifacts
         uses: actions/upload-artifact@v4
