@@ -414,6 +414,7 @@ jobs:
       - name: Run CMake consuming CMakePreset.json and run vcpkg to build packages
         uses: lukka/run-cmake@v10
         with:
+          cmakeListsTxtPath: '${{ github.workspace }}/build/CMake-hdf5-1.10.11/hdf5-1.10.11/CMakeLists.txt'
           workflowPreset: 'hict-StdShar-MSVC-notest'
 
       - name: Upload Gradle build artifacts
@@ -463,6 +464,7 @@ jobs:
           spectre: false
 
       - name: Build using CMake
+        working-directory: '${{ github.workspace }}/build/CMake-hdf5-1.10.11/hdf5-1.10.11'
         run: |
           cmake --workflow --preset='hict-StdShar-MSVC-notest' --fresh
 
@@ -519,6 +521,7 @@ jobs:
       - name: Run CMake consuming CMakePreset.json and run vcpkg to build packages
         uses: lukka/run-cmake@v10
         with:
+          cmakeListsTxtPath: '${{ github.workspace }}/build/CMake-hdf5-1.10.11/hdf5-1.10.11/CMakeLists.txt'
           workflowPreset: 'hict-StdShar-MSVC-notest'
 
       - name: Upload Gradle build artifacts
