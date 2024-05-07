@@ -35,6 +35,6 @@ cd CMake-hdf5-$VERSION
 cp -af ../../*.tar.gz .
 
 cd hdf5-$VERSION
-patch --ignore-whitespace --fuzz 10 -p2 < ../../../cmake_add_sources.diff
+patch --ignore-whitespace --fuzz 10 -p2 --force --verbose < ../../../cmake_add_sources.diff
 
 cp -af ../../../CMakeUserPresets.json .
