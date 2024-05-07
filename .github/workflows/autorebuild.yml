@@ -430,3 +430,105 @@ jobs:
           name: debug-archive-${{ github.job }}
           compression-level: 9
           if-no-files-found: error
+
+
+  build-jhdf5-windows-console:
+    runs-on: windows-latest
+    needs:
+      - prepare-winbuild
+
+    steps:
+      # - name: Checkout repository
+      #   uses: actions/checkout@v4
+
+      - name: 'Artifact download: HDF5 prepared winbuild'
+        uses: actions/download-artifact@v4
+        with:
+          name: hdf5_prepared_winbuild
+          path: .
+
+      - name: Setup JDK 8
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '8'
+          java-package: 'jdk'
+
+      - uses: lukka/get-cmake@latest
+
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: amd64
+          uwp: false
+          spectre: false
+
+      - name: Build using CMake
+        run: |
+          cmake --workflow --preset='hict-StdShar-MSVC-notest' --fresh
+
+      - name: Upload Gradle build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: jhdf5_windows_libraries_console
+          path: build/**/build/bin/Release/hdf5_java.dll
+
+      - name: Upload debug artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          path: .
+          name: debug-archive-${{ github.job }}
+          compression-level: 9
+          if-no-files-found: error
+
+  build-jhdf5-windows-console_cmake:
+    runs-on: windows-latest
+    needs:
+      - prepare-winbuild
+
+    steps:
+      # - name: Checkout repository
+      #   uses: actions/checkout@v4
+
+      - name: 'Artifact download: HDF5 prepared winbuild'
+        uses: actions/download-artifact@v4
+        with:
+          name: hdf5_prepared_winbuild
+          path: .
+
+      - name: Setup JDK 8
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '8'
+          java-package: 'jdk'
+
+      - uses: lukka/get-cmake@latest
+
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: amd64
+          uwp: false
+          spectre: false
+
+      - name: Run CMake consuming CMakePreset.json and run vcpkg to build packages
+        uses: lukka/run-cmake@v10
+        with:
+          workflowPreset: 'hict-StdShar-MSVC-notest'
+
+      - name: Upload Gradle build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: jhdf5_windows_libraries_console
+          path: build/**/build/bin/Release/hdf5_java.dll
+
+      - name: Upload debug artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          path: .
+          name: debug-archive-${{ github.job }}
+          compression-level: 9
+          if-no-files-found: error
+
+
