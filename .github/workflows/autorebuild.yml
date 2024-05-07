@@ -235,11 +235,11 @@ jobs:
           name: hdf5_linux_lib
           path: libs/native/jhdf5/amd64-Linux/
 
-      - name: Setup JDK 21
+      - name: Setup JDK 8
         uses: actions/setup-java@v4
         with:
           distribution: 'adopt'
-          java-version: '21'
+          java-version: '8'
           java-package: 'jdk'
 
       - name: Setup environment
@@ -263,7 +263,7 @@ jobs:
       - name: Build with Gradle
         shell: bash
         run: |
-          export JAVA_HOME="${JAVA_HOME_21_X64}"
+          export JAVA_HOME="${JAVA_HOME_8_X64}"
           ./gradlew build --debug --stacktrace --scan # -Dorg.gradle.java.home="${JAVA_HOME_21_X64}"
 
       - name: Upload Gradle build artifacts
