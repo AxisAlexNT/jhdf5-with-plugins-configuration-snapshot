@@ -337,96 +337,96 @@ jobs:
           if-no-files-found: error
 
 
-  build-hdf5-linux-all:
-    runs-on: ubuntu-latest
+  # build-hdf5-linux-all:
+  #   runs-on: ubuntu-latest
 
-    permissions:
-      contents: write
-      packages: write
+  #   permissions:
+  #     contents: write
+  #     packages: write
     
-    steps:
+  #   steps:
 
-    - name: Check presence of tools
-      shell: bash
-      run: |
-        set -ex
-        zstd --help
-        xz --help
-        tar --help
-        gcc --version
+  #   - name: Check presence of tools
+  #     shell: bash
+  #     run: |
+  #       set -ex
+  #       zstd --help
+  #       xz --help
+  #       tar --help
+  #       gcc --version
     
-    - name: Setup JDK 21
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '21'
-        java-package: 'jdk'
+  #   - name: Setup JDK 21
+  #     uses: actions/setup-java@v4
+  #     with:
+  #       distribution: 'temurin'
+  #       java-version: '21'
+  #       java-package: 'jdk'
         
-    - name: Checkout repository
-      uses: actions/checkout@v4
+  #   - name: Checkout repository
+  #     uses: actions/checkout@v4
 
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v3
+  #   - name: Setup Gradle
+  #     uses: gradle/actions/setup-gradle@v3
       
-    - name: Set environment variables for HDF5 build
-      run: |
-        echo "UPLOAD_DEBUG_ARCHIVE=true" >> $GITHUB_ENV
-        echo "REPLACE_JNI=0" >> $GITHUB_ENV
-        echo "JHDF5_ADDITIONAL_GCC_FLAGS=-O3 -march=haswell -mtune=znver3 -Wl,--exclude-libs,ALL" >> $GITHUB_ENV
-        JAVA_PATH="$(which java)"
-        JAVA_BIN_PATH=$(dirname "${JAVA_PATH}")
-        JAVA_HOME_PATH=$(dirname "${JAVA_BIN_PATH}")
-        if [[ -z ${JAVA_HOME+x} ]]; then
-          echo "JAVA_HOME=${JAVA_HOME_PATH}" >> $GITHUB_ENV
-        fi
-        echo "JVM_INCLUDE_PATH=${JAVA_HOME_PATH}/include" >> $GITHUB_ENV
+  #   - name: Set environment variables for HDF5 build
+  #     run: |
+  #       echo "UPLOAD_DEBUG_ARCHIVE=true" >> $GITHUB_ENV
+  #       echo "REPLACE_JNI=0" >> $GITHUB_ENV
+  #       echo "JHDF5_ADDITIONAL_GCC_FLAGS=-O3 -march=haswell -mtune=znver3 -Wl,--exclude-libs,ALL" >> $GITHUB_ENV
+  #       JAVA_PATH="$(which java)"
+  #       JAVA_BIN_PATH=$(dirname "${JAVA_PATH}")
+  #       JAVA_HOME_PATH=$(dirname "${JAVA_BIN_PATH}")
+  #       if [[ -z ${JAVA_HOME+x} ]]; then
+  #         echo "JAVA_HOME=${JAVA_HOME_PATH}" >> $GITHUB_ENV
+  #       fi
+  #       echo "JVM_INCLUDE_PATH=${JAVA_HOME_PATH}/include" >> $GITHUB_ENV
         
-    - name: Display env
-      run: env
+  #   - name: Display env
+  #     run: env
       
-    - name: Compile HDF5 + Plugins (Linux)
-      working-directory: ./source/c
-      run: ./compile_hdf5_linux_amd64.sh
+  #   - name: Compile HDF5 + Plugins (Linux)
+  #     working-directory: ./source/c
+  #     run: ./compile_hdf5_linux_amd64.sh
       
-    - name: JHDF5 (Linux)
-      continue-on-error: true
-      working-directory: ./source/c
-      run: ./compile_linux_amd64.sh
+  #   - name: JHDF5 (Linux)
+  #     continue-on-error: true
+  #     working-directory: ./source/c
+  #     run: ./compile_linux_amd64.sh
 
-    - name: Build with Gradle
-      continue-on-error: true
-      run: ./gradlew build
+  #   - name: Build with Gradle
+  #     continue-on-error: true
+  #     run: ./gradlew build
 
-    - name: Upload Gradle build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: jhdf5_java_global
-        path: build/libs
+  #   - name: Upload Gradle build artifacts
+  #     uses: actions/upload-artifact@v4
+  #     with:
+  #       name: jhdf5_java_global
+  #       path: build/libs
 
-    - name: Compress build environment for debugging
-      working-directory: . # Repository root
-      continue-on-error: true
-      if: env.UPLOAD_DEBUG_ARCHIVE == 'true'
-      run: | 
-        tar -c . | zstd -z -T0 --adapt -v -o archive.tar.zst
+  #   - name: Compress build environment for debugging
+  #     working-directory: . # Repository root
+  #     continue-on-error: true
+  #     if: env.UPLOAD_DEBUG_ARCHIVE == 'true'
+  #     run: | 
+  #       tar -c . | zstd -z -T0 --adapt -v -o archive.tar.zst
         
-    - name: Publish build artifacts
-      uses: actions/upload-artifact@v4
-      continue-on-error: true
-      if: env.UPLOAD_DEBUG_ARCHIVE == 'true'
-      with:
-        name: debug_archive_global
-        path: |
-          archive.tar.zst
+  #   - name: Publish build artifacts
+  #     uses: actions/upload-artifact@v4
+  #     continue-on-error: true
+  #     if: env.UPLOAD_DEBUG_ARCHIVE == 'true'
+  #     with:
+  #       name: debug_archive_global
+  #       path: |
+  #         archive.tar.zst
 
-    - name: Release debug archive
-      uses: marvinpinto/action-automatic-releases@latest
-      continue-on-error: true
-      if: env.UPLOAD_DEBUG_ARCHIVE == 'true'
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        automatic_release_tag: debug-global
-        prerelease: true
-        title: "Debugging archive"
-        files: |
-          **/*.tar.zst
+  #   - name: Release debug archive
+  #     uses: marvinpinto/action-automatic-releases@latest
+  #     continue-on-error: true
+  #     if: env.UPLOAD_DEBUG_ARCHIVE == 'true'
+  #     with:
+  #       repo_token: ${{ secrets.GITHUB_TOKEN }}
+  #       automatic_release_tag: debug-global
+  #       prerelease: true
+  #       title: "Debugging archive"
+  #       files: |
+  #         **/*.tar.zst
