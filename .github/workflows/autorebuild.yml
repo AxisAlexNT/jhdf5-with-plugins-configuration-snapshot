@@ -246,7 +246,6 @@ jobs:
         shell: bash
         run: |
           echo "JAVA_HOME=${JAVA_HOME_8_X64}" >> $GITHUB_ENV
-          export JAVA_HOME="${JAVA_HOME_8_X64}"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
@@ -263,7 +262,9 @@ jobs:
 
       - name: Build with Gradle
         shell: bash
-        run: ./gradlew build --debug -Dorg.gradle.java.home="${JAVA_HOME_21_X64}"
+        run: |
+          export JAVA_HOME="${JAVA_HOME_8_X64}"
+          ./gradlew build --debug # -Dorg.gradle.java.home="${JAVA_HOME_21_X64}"
 
       - name: Upload Gradle build artifacts
         uses: actions/upload-artifact@v4
