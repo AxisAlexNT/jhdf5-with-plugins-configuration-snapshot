@@ -10,7 +10,7 @@
       "inherits": "ci-base",
       "generator": "Unix Makefiles",
       "cacheVariables": {
-        "HDF5_ALLOW_EXTERNAL_SUPPORT": "TGZ",
+        "HDF5_ALLOW_EXTERNAL_SUPPORT": "GIT",
         "TGZPATH": {
           "type": "STRING",
           "value": "${sourceParentDir}/"
@@ -51,7 +51,7 @@
         "HDF5_ENABLE_LZ4_SUPPORT": "ON",
         "HDF5_ENABLE_BLOSC_SUPPORT": "ON",
         "HDF5_ENABLE_BLOSC": "ON",
-        "H5PL_ALLOW_EXTERNAL_SUPPORT": "TGZ",
+        "H5PL_ALLOW_EXTERNAL_SUPPORT": "GIT",
         "ENABLE_BLOSC": "ON",
         "ENABLE_LZF": "ON",
         "ENABLE_LZ4": "ON",
