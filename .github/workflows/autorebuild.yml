@@ -496,6 +496,11 @@ jobs:
           name: hdf5_prepared_winbuild
           path: .
 
+      - name: List all files
+        run: |
+          dir
+          tree
+
       - name: Setup JDK 8
         uses: actions/setup-java@v4
         with:
