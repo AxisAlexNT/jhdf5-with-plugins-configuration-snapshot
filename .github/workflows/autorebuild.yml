@@ -409,7 +409,7 @@ jobs:
           java-version: '8'
           java-package: 'jdk'
 
-      - uses: lukka/get-cmake@v3.27
+      - uses: lukka/get-cmake@latest
 
       - name: Setup anew (or from cache) vcpkg (and does not build any package)
         uses: lukka/run-vcpkg@v11
