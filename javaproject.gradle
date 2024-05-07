@@ -180,7 +180,7 @@ test {
 }
 
 dependencies {
-    ecj files('../jhdf5/libs/build/ecj-4.6.1.jar')
+    ecj files('../libs/build/ecj-4.6.1.jar')
 }
 
 compileJava {
