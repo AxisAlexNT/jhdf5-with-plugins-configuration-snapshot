@@ -390,7 +390,7 @@ jobs:
           compression-level: 0
           if-no-files-found: error
 
-  build-jhdf5-windows-console_cmake:
+  build-jhdf5-windows-console:
     runs-on: windows-latest
     needs:
       - prepare-winbuild
@@ -425,11 +425,10 @@ jobs:
           uwp: false
           spectre: false
 
-      - name: Run CMake consuming CMakePreset.json and run vcpkg to build packages
-        uses: lukka/run-cmake@v10
-        with:
-          cmakeListsTxtPath: '${{ github.workspace }}/build/CMake-hdf5-1.10.11/hdf5-1.10.11/CMakeLists.txt'
-          workflowPreset: 'hict-StdShar-MSVC-notest'
+      - name: Build using CMake
+        working-directory: '${{ github.workspace }}/build/CMake-hdf5-1.10.11/hdf5-1.10.11'
+        run: |
+          cmake --workflow --preset='hict-StdShar-MSVC-notest' --fresh
 
       - name: List all files
         run: |
