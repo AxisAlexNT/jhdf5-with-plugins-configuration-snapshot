@@ -386,103 +386,6 @@ jobs:
           compression-level: 0
           if-no-files-found: error
 
-
-  build-jhdf5-windows:
-    runs-on: windows-latest
-    needs:
-      - prepare-winbuild
-
-    steps:
-      # - name: Checkout repository
-      #   uses: actions/checkout@v4
-
-      - name: 'Artifact download: HDF5 prepared winbuild'
-        uses: actions/download-artifact@v4
-        with:
-          name: hdf5_prepared_winbuild
-          path: .
-
-      - name: Setup JDK 8
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '8'
-          java-package: 'jdk'
-
-      - uses: lukka/get-cmake@latest
-
-      - name: Run CMake consuming CMakePreset.json and run vcpkg to build packages
-        uses: lukka/run-cmake@v10
-        with:
-          cmakeListsTxtPath: '${{ github.workspace }}/build/CMake-hdf5-1.10.11/hdf5-1.10.11/CMakeLists.txt'
-          workflowPreset: 'hict-StdShar-MSVC-notest'
-
-      - name: Upload Gradle build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: jhdf5_windows_libraries
-          path: build/**/build/bin/Release/hdf5_java.dll
-
-      - name: Upload debug artifact
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          path: .
-          name: debug-archive-${{ github.job }}
-          compression-level: 9
-          if-no-files-found: error
-
-
-  build-jhdf5-windows-console:
-    runs-on: windows-latest
-    needs:
-      - prepare-winbuild
-
-    steps:
-      # - name: Checkout repository
-      #   uses: actions/checkout@v4
-
-      - name: 'Artifact download: HDF5 prepared winbuild'
-        uses: actions/download-artifact@v4
-        with:
-          name: hdf5_prepared_winbuild
-          path: .
-
-      - name: Setup JDK 8
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '8'
-          java-package: 'jdk'
-
-      - uses: lukka/get-cmake@latest
-
-      - uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: amd64
-          uwp: false
-          spectre: false
-
-      - name: Build using CMake
-        working-directory: '${{ github.workspace }}/build/CMake-hdf5-1.10.11/hdf5-1.10.11'
-        run: |
-          cmake --workflow --preset='hict-StdShar-MSVC-notest' --fresh
-
-      - name: Upload Gradle build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: jhdf5_windows_libraries_console
-          path: build/**/build/bin/Release/hdf5_java.dll
-
-      - name: Upload debug artifact
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          path: .
-          name: debug-archive-${{ github.job }}
-          compression-level: 9
-          if-no-files-found: error
-
   build-jhdf5-windows-console_cmake:
     runs-on: windows-latest
     needs:
@@ -501,7 +404,7 @@ jobs:
       - name: List all files
         run: |
           dir
-          tree
+          tree /A /F
 
       - name: Setup JDK 8
         uses: actions/setup-java@v4
@@ -524,6 +427,11 @@ jobs:
           cmakeListsTxtPath: '${{ github.workspace }}/build/CMake-hdf5-1.10.11/hdf5-1.10.11/CMakeLists.txt'
           workflowPreset: 'hict-StdShar-MSVC-notest'
 
+      - name: List all files
+        run: |
+          dir
+          tree /A /F
+
       - name: Upload Gradle build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -540,52 +448,62 @@ jobs:
           if-no-files-found: error
 
 
-build-jhdf5-windows-console-noflow:
-  runs-on: windows-latest
-  needs:
-    - prepare-winbuild
+  build-jhdf5-windows-console-noflow:
+    runs-on: windows-latest
+    needs:
+      - prepare-winbuild
 
-  steps:
-    # - name: Checkout repository
-    #   uses: actions/checkout@v4
+    steps:
+      # - name: Checkout repository
+      #   uses: actions/checkout@v4
 
-    - name: 'Artifact download: HDF5 prepared winbuild'
-      uses: actions/download-artifact@v4
-      with:
-        name: hdf5_prepared_winbuild
-        path: .
+      - name: 'Artifact download: HDF5 prepared winbuild'
+        uses: actions/download-artifact@v4
+        with:
+          name: hdf5_prepared_winbuild
+          path: .
 
-    - name: Setup JDK 8
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '8'
-        java-package: 'jdk'
+      - name: Setup JDK 8
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '8'
+          java-package: 'jdk'
 
-    - uses: lukka/get-cmake@latest
+      - uses: lukka/get-cmake@latest
 
-    - uses: ilammy/msvc-dev-cmd@v1
-      with:
-        arch: amd64
-        uwp: false
-        spectre: false
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: amd64
+          uwp: false
+          spectre: false
 
-    - name: Build using VS script
-      working-directory: '${{ github.workspace }}/build/CMake-hdf5-1.10.11'
-      run: |
-        build-VS2022-64.bat
+      - name: List all files
+        run: |
+          dir
+          tree /A /F
 
-    - name: Upload Gradle build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: jhdf5_windows_libraries_console
-        path: build/**/build/bin/Release/hdf5_java.dll
+      - name: Build using VS script
+        working-directory: '${{ github.workspace }}/build/CMake-hdf5-1.10.11'
+        run: |
+          build-VS2022-64.bat
 
-    - name: Upload debug artifact
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        path: .
-        name: debug-archive-${{ github.job }}
-        compression-level: 9
-        if-no-files-found: error
+      - name: List all files
+        run: |
+          dir
+          tree /A /F
+
+      - name: Upload Gradle build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: jhdf5_windows_libraries_console
+          path: build/**/build/bin/Release/hdf5_java.dll
+
+      - name: Upload debug artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          path: .
+          name: debug-archive-${{ github.job }}
+          compression-level: 9
+          if-no-files-found: error
