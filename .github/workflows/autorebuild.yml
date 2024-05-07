@@ -363,7 +363,11 @@ jobs:
       - name: Compile HDF5 + Plugins (Linux)
         working-directory: ./source/c
         shell: bash
-        run: ./prepare_winbuild.sh
+        run: |
+          ./prepare_winbuild.sh
+          cp -arf hdf5_plugins* build/
+          cp -arf hdf5_plugins* build/CMake-hdf5-1.10.11/
+          cp -arf hdf5_plugins* build/CMake-hdf5-1.10.11/hdf5-1.10.11
 
       - name: 'Artifact upload: HDF5 prepared for Windows build'
         uses: actions/upload-artifact@v4
