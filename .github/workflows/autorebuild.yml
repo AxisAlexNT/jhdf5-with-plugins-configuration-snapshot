@@ -487,6 +487,7 @@ jobs:
           tree /A /F
 
       - name: Build using VS script
+        working-directory: '${{ github.workspace }}\build\CMake-hdf5-1.10.11\'
         run: |
           & ${{ github.workspace }}\build\CMake-hdf5-1.10.11\build-VS2022-64.bat
 
