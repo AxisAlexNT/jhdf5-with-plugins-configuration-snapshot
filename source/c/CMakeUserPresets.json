@@ -8,7 +8,7 @@
       "name": "hict-base-tgz",
       "hidden": true,
       "inherits": "ci-base",
-      "generator": "Unix Makefiles",
+      "generator": "Ninja",
       "cacheVariables": {
         "HDF5_ALLOW_EXTERNAL_SUPPORT": "TGZ",
         "TGZPATH": {
@@ -24,7 +24,7 @@
         "hict-base-tgz",
         "ci-CompressionVars"
       ],
-      "generator": "Unix Makefiles",
+      "generator": "Ninja",
       "cacheVariables": {
         "HDF5_PACKAGE_EXTLIBS": "ON",
         "ZLIB_USE_LOCALCONTENT": "OFF",
@@ -38,7 +38,7 @@
     {
       "name": "hict-StdPlugins",
       "hidden": true,
-      "generator": "Unix Makefiles",
+      "generator": "Ninja",
       "inherits": [
         "ci-base-plugins",
         "ci-PluginsVars",
@@ -69,7 +69,7 @@
     {
       "name": "hict-ExamplesVars",
       "hidden": true,
-      "generator": "Unix Makefiles",
+      "generator": "Ninja",
       "cacheVariables": {
         "HDF5_EXAMPLES_COMPRESSED": {
           "type": "STRING",
@@ -92,7 +92,7 @@
     {
       "name": "hict-StdExamples",
       "hidden": true,
-      "generator": "Unix Makefiles",
+      "generator": "Ninja",
       "inherits": [
         "ci-base",
         "hict-ExamplesVars",
@@ -113,7 +113,7 @@
         "hict-StdExamples",
         "hict-StdPlugins"
       ],
-      "generator": "Unix Makefiles",
+      "generator": "Ninja",
       "cacheVariables": {
         "HDF_PACKAGE_NAMESPACE": {
           "type": "STRING",
@@ -151,7 +151,7 @@
         "hict-StdCompression",
         "hict-StdPlugins"
       ],
-      "generator": "Unix Makefiles",
+      "generator": "Ninja",
       "cacheVariables": {
         "HDF_PACKAGE_NAMESPACE": {
           "type": "STRING",
