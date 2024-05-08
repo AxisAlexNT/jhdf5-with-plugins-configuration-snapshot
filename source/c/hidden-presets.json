@@ -5,7 +5,7 @@
       "name": "ci-base",
       "displayName": "Basic Config",
       "description": "Basic build",
-      "generator": "NMake Makefiles",
+      "generator": "Visual Studio 17 2022",
       "hidden": true,
       "binaryDir": "${sourceParentDir}/build110/${presetName}",
       "installDir": "${sourceParentDir}/install110/${presetName}"
