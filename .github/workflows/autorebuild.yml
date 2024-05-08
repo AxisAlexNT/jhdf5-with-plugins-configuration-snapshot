@@ -326,11 +326,10 @@ jobs:
         with:
           name: jhdf5_windows_debug_console
 
-      - name: 'Artifact download: Windows Console (noflow) build debug'
-        uses: actions/download-artifact@v4
-        with:
-          name: jhdf5_windows_debug_console_noflow
-
+      # - name: 'Artifact download: Windows Console (noflow) build debug'
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: jhdf5_windows_debug_console_noflow
 
 
       - name: Release built artifacts
