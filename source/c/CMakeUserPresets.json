@@ -175,6 +175,7 @@
     {
       "name": "hict-StdShar-MSVC",
       "description": "MSVC Standard Config for x64 (Release) for HiCT jHDF5 with plugins",
+      "generator": "NMake Makefiles",
       "inherits": [
         "ci-x64-Release-MSVC",
         "ci-Java",
