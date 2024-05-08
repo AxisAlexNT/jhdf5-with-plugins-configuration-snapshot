@@ -293,7 +293,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: jhdf5_java
-          path: build/**
+          path: |
+            targets/gradle/distributions/**
+            targets/gradle/libs/*.jar
           if-no-files-found: error
 
       - name: Generate debug archive for failed jobs
