@@ -21,6 +21,11 @@ jobs:
           gcc --version
           cmake --help
 
+      - name: Install CMake Dependencies (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install ninja-build
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -124,6 +129,11 @@ jobs:
           xz --help
           tar --help
           gcc --version
+
+      - name: Install CMake Dependencies (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install ninja-build
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -428,6 +438,8 @@ jobs:
     steps:
       # - name: Checkout repository
       #   uses: actions/checkout@v4
+      - name: Install Ninja (Windows)
+        run: choco install ninja
 
       - name: Check LongPathsEnabled
         run: |
