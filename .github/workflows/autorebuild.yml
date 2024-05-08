@@ -293,6 +293,8 @@ jobs:
       - build-hdf5-linux
       - build-jhdf5-linux
       - build-jhdf5-java
+      - build-jhdf5-windows-console
+      - build-jhdf5-windows-console-noflow
 
     permissions:
       contents: write
@@ -313,6 +315,16 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: jhdf5_so_linux
+
+      - name: 'Artifact download: Windows Console build debug'
+        uses: actions/download-artifact@v4
+        with:
+          name: jhdf5_windows_debug_console
+
+      - name: 'Artifact download: Windows Console (noflow) build debug'
+        uses: actions/download-artifact@v4
+        with:
+          name: jhdf5_windows_debug_console_noflow
 
       - name: Release built artifacts
         uses: marvinpinto/action-automatic-releases@latest
@@ -426,14 +438,29 @@ jobs:
           spectre: false
 
       - name: Build using CMake
+        continue-on-error: true
         working-directory: '${{ github.workspace }}/build/CMake-hdf5-1.10.11/hdf5-1.10.11'
         run: |
           cmake --workflow --preset='hict-StdShar-MSVC-notest' --fresh
 
       - name: List all files
+        continue-on-error: true
         run: |
           dir
           tree /A /F
+
+      - name: Create and compress build directory
+        continue-on-error: true
+        working-directory: .
+        shell: bash
+        run: |
+          tar -c . | zstd -z --adapt -T0 -v -o win_console.tar.zst
+
+      - name: Upload Gradle build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: jhdf5_windows_debug_console
+          path: win_console.tar.zst
 
       - name: Upload Gradle build artifacts
         uses: actions/upload-artifact@v4
@@ -487,19 +514,34 @@ jobs:
           tree /A /F
 
       - name: Build using VS script
+        continue-on-error: true
         working-directory: '${{ github.workspace }}\build\CMake-hdf5-1.10.11\'
         run: |
           & ${{ github.workspace }}\build\CMake-hdf5-1.10.11\build-VS2022-64.bat
 
       - name: List all files
+        continue-on-error: true
         run: |
           dir
           tree /A /F
 
+      - name: Create and compress build directory
+        continue-on-error: true
+        working-directory: .
+        shell: bash
+        run: |
+          tar -c . | zstd -z --adapt -T0 -v -o win_noflow.tar.zst
+
       - name: Upload Gradle build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: jhdf5_windows_libraries_console
+          name: jhdf5_windows_debug_console_noflow
+          path: win_noflow.tar.zst
+
+      - name: Upload dll artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: jhdf5_windows_libraries_console_noflow
           path: build/**/build/bin/Release/hdf5_java.dll
 
       - name: Upload debug artifact
