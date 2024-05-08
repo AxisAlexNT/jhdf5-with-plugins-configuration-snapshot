@@ -287,7 +287,7 @@ jobs:
       - name: List all files
         shell: bash
         run: |
-          ls - alR
+          ls -alR
 
       - name: Upload Gradle build artifacts
         uses: actions/upload-artifact@v4
