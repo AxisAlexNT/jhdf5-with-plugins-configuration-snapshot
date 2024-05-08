@@ -380,7 +380,7 @@ jobs:
           cp -arf hdf5_plugins* build/
           cp -arf hdf5_plugins* build/CMake-hdf5-1.10.11/
           cp -arf hdf5_plugins* build/CMake-hdf5-1.10.11/hdf5-1.10.11
-          cp -arf hidden_presets.json build/CMake-hdf5-1.10.11/hdf5-1.10.11/config/cmake-presets/
+          cp -arf hidden-presets.json build/CMake-hdf5-1.10.11/hdf5-1.10.11/config/cmake-presets/
 
       - name: 'Artifact upload: HDF5 prepared for Windows build'
         uses: actions/upload-artifact@v4
