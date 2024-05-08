@@ -113,7 +113,7 @@
         "hict-StdExamples",
         "hict-StdPlugins"
       ],
-      "generator": "Unix Makefiles",
+      "generator": "NMake Makefiles",
       "cacheVariables": {
         "HDF_PACKAGE_NAMESPACE": {
           "type": "STRING",
