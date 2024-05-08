@@ -129,9 +129,9 @@
         "HDF5_USE_110_API": "ON",
         "DEFAULT_API_VERSION": "v110",
         "HDF5_BUILD_SHARED": "ON",
-        "HDF5_BUILD_ONLY_SHARED": "ON",
+        "HDF5_BUILD_ONLY_SHARED": "OFF",
         "BUILD_SHARED_LIBS": "ON",
-        "ONLY_SHARED_LIBS": "ON",
+        "ONLY_SHARED_LIBS": "OFF",
         "HDF5_ENABLE_PARALLEL": "OFF",
         "HDF5_ENABLE_THREADSAFE": "OFF",
         "CMAKE_SHARED_LIBRARY_SUFFIX": {
