@@ -180,7 +180,10 @@
         "ci-x64-Release-MSVC",
         "ci-Java",
         "hict-StdShar"
-      ]
+      ],
+      "cacheVariables": {
+        "CMAKE_OBJECT_PATH_MAX": 65536
+      }
     },
     {
       "name": "hict-StdShar-GNUC",

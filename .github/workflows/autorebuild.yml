@@ -418,6 +418,10 @@ jobs:
       # - name: Checkout repository
       #   uses: actions/checkout@v4
 
+      - name: Check LongPathsEnabled
+        run: |
+          (Get-ItemProperty "HKLM:System\CurrentControlSet\Control\FileSystem").LongPathsEnabled
+
       - name: 'Artifact download: HDF5 prepared winbuild'
         uses: actions/download-artifact@v4
         with:
