@@ -530,6 +530,8 @@ jobs:
     steps:
       # - name: Checkout repository
       #   uses: actions/checkout@v4
+      - name: Install Ninja (Windows)
+        run: choco install ninja cmake
 
       - name: 'Artifact download: HDF5 prepared winbuild'
         uses: actions/download-artifact@v4
