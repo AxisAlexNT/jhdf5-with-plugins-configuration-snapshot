@@ -207,7 +207,7 @@
       "name": "hict-StdShar-MSVC",
       "description": "MSVC Standard Build for x64 (Release) for HiCT version of jHDF5 with plugins",
       "configurePreset": "hict-StdShar-MSVC",
-      "verbose": true,
+      "verbose": false,
       "inherits": [
         "ci-x64-Release-MSVC"
       ]
