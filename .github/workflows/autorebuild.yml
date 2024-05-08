@@ -442,7 +442,7 @@ jobs:
         continue-on-error: true
         working-directory: '${{ github.workspace }}/build/CMake-hdf5-1.10.11/hdf5-1.10.11'
         run: |
-          cmake --workflow --preset='hict-StdShar-MSVC-notest' --fresh
+          cmake --workflow --preset='hict-StdShar-MSVC' --fresh
 
       - name: List all files
         continue-on-error: true
