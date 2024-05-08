@@ -182,7 +182,7 @@
         "hict-StdShar"
       ],
       "cacheVariables": {
-        "CMAKE_OBJECT_PATH_MAX": 65536
+        "CMAKE_OBJECT_PATH_MAX": "65536"
       }
     },
     {
