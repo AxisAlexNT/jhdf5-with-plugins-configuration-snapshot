@@ -284,11 +284,17 @@ jobs:
           export JAVA_HOME="${JAVA_HOME_8_X64}"
           ./gradlew build
 
+      - name: List all files
+        shell: bash
+        run: |
+          ls - alR
+
       - name: Upload Gradle build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: jhdf5_java
           path: build/**
+          if-no-files-found: error
 
       - name: Generate debug archive for failed jobs
         if: always()
