@@ -21,10 +21,10 @@
       "generator": "Unix Makefiles",
       "cacheVariables": {
         "HDF5_PACKAGE_EXTLIBS": "ON",
-        "ZLIB_USE_LOCALCONTENT": "OFF",
+        "ZLIB_USE_LOCALCONTENT": "ON",
 	"HDF5_ENABLE_ZLIB_SUPPORT": "ON",
 	"HDF5_ENABLE_Z_LIB_SUPPORT": "ON",
-        "LIBAEC_USE_LOCALCONTENT": "OFF",
+        "LIBAEC_USE_LOCALCONTENT": "ON",
         "HDF5_ENABLE_SZIP_SUPPORT": "OFF",
         "HDF5_ENABLE_SZIP_ENCODING": "OFF"
       }
