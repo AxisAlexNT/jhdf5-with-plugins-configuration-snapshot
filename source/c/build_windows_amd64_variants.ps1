@@ -1,6 +1,6 @@
 param(
-  [ValidateSet("generic", "baseline", "avx512")]
-  [string[]] $Variants = @("generic", "baseline", "avx512"),
+  [ValidateSet("generic", "avx2", "baseline", "avx512")]
+  [string[]] $Variants = @("generic", "avx2", "avx512"),
   [string] $JdkIncludePath = $(if ($env:JVM_INCLUDE_PATH) { $env:JVM_INCLUDE_PATH } elseif ($env:JAVA_HOME) { Join-Path $env:JAVA_HOME "include" } else { "" }),
   [string] $DeployRoot = $(Join-Path $PSScriptRoot "..\..\libs\native\jhdf5")
 )
@@ -27,18 +27,25 @@ function Invoke-NativeTool {
 }
 
 foreach ($variant in $Variants) {
-  $env:POSTFIX = $variant
+  $outputVariant = $variant
+  if ($variant -eq "baseline") {
+    $outputVariant = "avx2"
+    Write-Host "[jhdf5] Variant 'baseline' is deprecated; building the AVX2 target as '$outputVariant'."
+  }
+
+  $env:POSTFIX = $outputVariant
   $env:CMAKE_PRESET = "hict-StdShar-MSVC-notest"
   switch ($variant) {
     "generic" { $env:CL = "/O2 /GL $initialCl" }
+    "avx2" { $env:CL = "/O2 /arch:AVX2 /GL $initialCl" }
     "baseline" { $env:CL = "/O2 /arch:AVX2 /GL $initialCl" }
     "avx512" { $env:CL = "/O2 /arch:AVX512 /GL $initialCl" }
   }
 
-  Write-Host "[jhdf5] Preparing Windows amd64 $variant variant"
+  Write-Host "[jhdf5] Preparing Windows amd64 $outputVariant variant"
   bash (Join-Path $PSScriptRoot "prepare_winbuild.sh")
 
-  $sourceDir = Join-Path $PSScriptRoot "build\CMake-hdf5-1.10.11-$variant\hdf5-1.10.11"
+  $sourceDir = Join-Path $PSScriptRoot "build\CMake-hdf5-1.10.11-$outputVariant\hdf5-1.10.11"
   if (-not (Test-Path $sourceDir)) {
     throw "Prepared HDF5 source directory was not found: $sourceDir"
   }
@@ -52,7 +59,7 @@ foreach ($variant in $Variants) {
 
   $binaryDir = Join-Path $sourceDir "build110\hict-StdShar-MSVC\bin\Release"
   $buildRoot = Join-Path $sourceDir "build110\hict-StdShar-MSVC"
-  $deployDir = Join-Path $DeployRoot "amd64-Windows-$variant"
+  $deployDir = Join-Path $DeployRoot "amd64-Windows-$outputVariant"
   New-Item -ItemType Directory -Force -Path $deployDir | Out-Null
   Get-ChildItem $binaryDir -Filter "*.dll" | Copy-Item -Destination $deployDir -Force
 
@@ -83,5 +90,5 @@ foreach ($variant in $Variants) {
   if (Test-Path (Join-Path $deployDir "hdf5_java.dll")) {
     Copy-Item (Join-Path $deployDir "hdf5_java.dll") (Join-Path $deployDir "jhdf5.dll") -Force
   }
-  Write-Host "[jhdf5] Deployed Windows amd64 $variant DLLs to $deployDir"
+  Write-Host "[jhdf5] Deployed Windows amd64 $outputVariant DLLs to $deployDir"
 }

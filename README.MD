@@ -41,17 +41,18 @@ Linux amd64 builds:
 
 ```bash
 cd source/c
-JAVA_HOME=/path/to/jdk ./build_linux_amd64_variants.sh generic baseline avx512
+JAVA_HOME=/path/to/jdk ./build_linux_amd64_variants.sh generic avx2 avx512
 ```
 
-The `generic` variant is the portable amd64 build. The `baseline` variant
+The `generic` variant is the portable amd64 build. The `avx2` variant
 targets AVX2/FMA/SSE4.2/BMI/BMI2 for the modern non-AVX-512 machines HiCT
 currently targets. The `avx512` variant adds AVX-512F/DQ/BW/VL and must only be
-loaded after CPU feature detection. Outputs are deployed to:
+loaded after CPU feature detection. The old `baseline` name is accepted as a
+compatibility alias for `avx2`. Outputs are deployed to:
 
 ```text
 libs/native/jhdf5/amd64-Linux-generic
-libs/native/jhdf5/amd64-Linux-baseline
+libs/native/jhdf5/amd64-Linux-avx2
 libs/native/jhdf5/amd64-Linux-avx512
 ```
 
@@ -66,14 +67,14 @@ Windows amd64 builds should be run from a Visual Studio x64 Native Tools shell:
 
 ```powershell
 cd source\c
-.\build_windows_amd64_variants.ps1 -Variants generic,baseline,avx512
+.\build_windows_amd64_variants.ps1 -Variants generic,avx2,avx512
 ```
 
 Outputs are deployed to:
 
 ```text
 libs/native/jhdf5/amd64-Windows-generic
-libs/native/jhdf5/amd64-Windows-baseline
+libs/native/jhdf5/amd64-Windows-avx2
 libs/native/jhdf5/amd64-Windows-avx512
 ```
 
