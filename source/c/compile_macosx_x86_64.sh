@@ -17,8 +17,12 @@ cp hdf5-$VERSION/src/H5private.h jni/
 echo "JHDF5 building..."
 gcc -m64 -mmacosx-version-min=10.11 -dynamiclib -O3 jni/*.c -Ihdf5-${VERSION}-x86_64/include -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/JavaVM.framework/Versions/Current/Headers hdf5-${VERSION}-x86_64/lib/libhdf5.a -o libjhdf5.jnilib -lz &> jhdf5_build.log
 
+DEPLOY_DIR="../../../libs/native/jhdf5/x86_64-Mac OS X"
+mkdir -p "$DEPLOY_DIR"
+find . -type f \( -name "libhdf5*.dylib" -o -name "libh5*.dylib" -o -name "libh5*.so" -o -name "libhdf5*.so" \) -exec cp -Ppf {} "$DEPLOY_DIR/" \;
+
 if [ -f libjhdf5.jnilib ]; then
-  cp -pf libjhdf5.jnilib "../../../libs/native/jhdf5/x86_64-Mac OS X"
+  cp -pf libjhdf5.jnilib "$DEPLOY_DIR"
   echo "Build deployed"
 else
   echo "ERROR"
