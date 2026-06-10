@@ -1,7 +1,5 @@
 #! /bin/bash
-set -e
-set -u
-set -o pipefail
+set -euo pipefail
 set -x
 
 SCRIPT_PATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
@@ -9,13 +7,12 @@ SCRIPT_PATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 source version.sh
 SOURCE_VERSION="$VERSION"
 
-# Add optimization arguments for JHDF5 build
-if [ -z ${JHDF5_ADDITIONAL_GCC_FLAGS+x} ]; then	
-	JHDF5_ADDITIONAL_GCC_FLAGS='-O3 -m64 -mavx2 -mfma -msse4.2 -mbmi -mbmi2 -mtune=generic -Wl,-rpath,$ORIGIN -Wl,--exclude-libs,ALL'
+if [ -z "${JHDF5_ADDITIONAL_GCC_FLAGS+x}" ]; then
+	JHDF5_ADDITIONAL_GCC_FLAGS='-O3 -fPIC -Wl,-rpath,$ORIGIN -Wl,--exclude-libs,ALL'
  	echo "JHDF5_ADDITIONAL_GCC_FLAGS variable was not provided in environment, default set to ${JHDF5_ADDITIONAL_GCC_FLAGS}"
- else 
- 	echo "JHDF5_ADDITIONAL_GCC_FLAGS variable is provided and is set to ${JHDF5_ADDITIONAL_GCC_FLAGS}"
- fi
+ else
+	echo "JHDF5_ADDITIONAL_GCC_FLAGS variable is provided and is set to ${JHDF5_ADDITIONAL_GCC_FLAGS}"
+fi
 
 resolve_jvm_include_path() {
 	local candidate_include="${1:-}"
@@ -42,7 +39,7 @@ if [ -z ${JVM_INCLUDE_PATH+x} ]; then
 	if JVM_INCLUDE_PATH="$(resolve_jvm_include_path "${JAVA_HOME:-}/include")"; then
 		echo "JVM_INCLUDE_PATH variable was not provided in environment, resolved to ${JVM_INCLUDE_PATH}"
 	else
-		echo "::error file=${SCRIPT_PATH}/compile_linux_amd64.sh,line=30::Could not find JNI headers. Set JAVA_HOME to a full JDK or set JVM_INCLUDE_PATH to a directory containing jni.h and linux/jni_md.h."
+		echo "::error file=${SCRIPT_PATH}/compile_linux_arm64.sh,line=30::Could not find JNI headers. Set JAVA_HOME to a full JDK or set JVM_INCLUDE_PATH to a directory containing jni.h and linux/jni_md.h."
 		exit 1
 	fi
 else
@@ -50,12 +47,12 @@ else
 fi
 
 if [[ ! -d "${JVM_INCLUDE_PATH}" || ! -d "${JVM_INCLUDE_PATH}/linux" ]]; then
-	echo "::error file=${SCRIPT_PATH}/compile_linux_amd64.sh,line=30::JVM include directory (${JVM_INCLUDE_PATH}) or its linux subdirectory does not exist."
+	echo "::error file=${SCRIPT_PATH}/compile_linux_arm64.sh,line=30::JVM include directory (${JVM_INCLUDE_PATH}) or its linux subdirectory does not exist."
 	exit 1
 fi
 
 if [ -z ${JHDF5_DEPLOY_DIR+x} ]; then
-	JHDF5_DEPLOY_DIR="$SCRIPT_PATH/../../libs/native/jhdf5/amd64-Linux"
+	JHDF5_DEPLOY_DIR="$SCRIPT_PATH/../../libs/native/jhdf5/arm64-Linux"
 	echo "JHDF5_DEPLOY_DIR variable was not provided in environment, default set to ${JHDF5_DEPLOY_DIR}"
 else
 	echo "JHDF5_DEPLOY_DIR variable is provided and is set to ${JHDF5_DEPLOY_DIR}"
@@ -65,39 +62,16 @@ if [ -n "${POSTFIX:-}" ]; then
   VERSION="$SOURCE_VERSION-$POSTFIX"
 fi
 
-# An old way for autotools build tree
-if [[ ! -z "" ]]; then
-	rm -fR build/jni
-	rm -f build/libjhdf5.so
-	cp -a jni build/
-	cp -a *.c build/jni/
-	cd build
-	cp hdf5-$VERSION/src/H5win32defs.h jni/
-	cp hdf5-$VERSION/src/H5private.h jni/
-
-	echo "JHDF5 building..."
-	gcc -shared -O3 -mtune=corei7 -fPIC -Wl,--exclude-libs,ALL jni/*.c -Ihdf5-${VERSION}-amd64/include -I/usr/lib/jvm/java-1.8.0/include -I/usr/lib/jvm/java-1.8.0/include/linux hdf5-${VERSION}-amd64/lib/libhdf5.a -o libjhdf5.so -lz &> jhdf5_build.log
-
-	if [ -f libjhdf5.so ]; then
-	  cp -pf libjhdf5.so ../../../libs/native/jhdf5/amd64-Linux/
-	  echo "Build deployed"
-	else
-	  echo "ERROR"
-	fi
-fi
-
-#cd build
-
 SRCDIR=$(realpath build/hdf5-$VERSION/hdf5-$SOURCE_VERSION/)
 BUILDDIR=$(realpath build)
 
-rm -rf $BUILDDIR/jni
-rm -f $BUILDDIR/libjhdf5.so
-cp -a jni $BUILDDIR/
-cp -a *.c $BUILDDIR/jni/
-cd $BUILDDIR
-cp $SRCDIR/src/H5win32defs.h $BUILDDIR/jni/
-cp $SRCDIR/src/H5private.h $BUILDDIR/jni/
+rm -rf "$BUILDDIR/jni"
+rm -f "$BUILDDIR/libjhdf5.so"
+cp -a jni "$BUILDDIR/"
+cp -a *.c "$BUILDDIR/jni/"
+cd "$BUILDDIR"
+cp "$SRCDIR/src/H5win32defs.h" "$BUILDDIR/jni/"
+cp "$SRCDIR/src/H5private.h" "$BUILDDIR/jni/"
 
 PDIR="$BUILDDIR/hdf5-$VERSION/build110/hict-StdShar-GNUC/_CPack_Packages/Linux/TGZ/HDF5-1.10.11-Linux/HDF_Group/HDF5/1.10.11/"
 BDIR="$BUILDDIR/hdf5-$VERSION/build110/hict-StdShar-GNUC/"
@@ -112,46 +86,11 @@ while IFS= read -r lib_path; do
 	STATIC_LIBS+=("$lib_path")
 done < <(find "$BDIR" -type f -name "*.a" -print)
 
-
 rm -rf jhdf5*.std*.log jhdf5*.so
 echo "JHDF5 building..."
-if [[ ! -z "" ]]; then
-
-	# Bad: links JHDF5 statically to HDF5, not suitable for plugins
-	gcc \
-		-shared -O3 -march=native -mtune=znver3 -fPIC \
-		-Wl,--exclude-libs,ALL \
-		$BUILDDIR/jni/*.c \
-		-I"$HDF5_PUBLIC_INCLUDE" \
-		-I$BDIR/src \
-		-I$SRCDIR/src \
-		-I$JVM_INCLUDE_PATH \
-		-I$JVM_INCLUDE_PATH/linux \
-		"$BDIR/bin/libhdf5.a" \
-		"${STATIC_LIBS[@]}" \
-		-o libjhdf5.so -lz \
-			> >(tee -a jhdf5.stdout.log) 2> >(tee -a jhdf5.stderr.log >&2)
-
-	# Even worse: links JHDF5 statically to HDF5 and exports all symbols
-	gcc \
-		-shared -O3 -march=native -mtune=znver3 -fPIC \
-		$BUILDDIR/jni/*.c \
-		-I"$HDF5_PUBLIC_INCLUDE" \
-		-I$BDIR/src \
-		-I$SRCDIR/src \
-		-I$JVM_INCLUDE_PATH \
-		-I$JVM_INCLUDE_PATH/linux \
-		"$BDIR/bin/libhdf5.a" \
-		"${STATIC_LIBS[@]}" \
-		-o libjhdf5_export.so -lz \
-			> >(tee -a jhdf5_export.stdout.log) 2> >(tee -a jhdf5_export.stderr.log >&2)
-fi
-
-
-# Links JHDF5 dynamically to HDF5 (still exports all symbols, which seems to be ok?)
 gcc \
 	-shared \
- 	-fPIC \
+	-fPIC \
 	$JHDF5_ADDITIONAL_GCC_FLAGS \
 	$BUILDDIR/jni/*.c  \
 	-I"$HDF5_PUBLIC_INCLUDE" \
@@ -183,7 +122,7 @@ if [ -f libjhdf5.so ]; then
     fi
   done
 
-  LEGACY_PLUGIN_DIR="$SCRIPT_PATH/../../libs/native/jhdf5/amd64-Linux"
+  LEGACY_PLUGIN_DIR="$SCRIPT_PATH/../../libs/native/jhdf5/arm64-Linux"
   if [[ "$BUILT_PLUGIN_COUNT" -eq 0 && -d "$LEGACY_PLUGIN_DIR" ]]; then
     echo "Built HDF5 compression plugins were not found; using legacy plugin copies from ${LEGACY_PLUGIN_DIR}"
     find "$LEGACY_PLUGIN_DIR" -maxdepth 1 -type f \

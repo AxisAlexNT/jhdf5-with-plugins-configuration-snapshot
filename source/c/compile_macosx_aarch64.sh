@@ -2,7 +2,7 @@
 
 source version.sh
 
-if [ -n "$POSTFIX" ]; then
+if [ -n "${POSTFIX:-}" ]; then
   VERSION="$VERSION-$POSTFIX"
 fi
 
@@ -28,4 +28,3 @@ if [ -f libjhdf5.jnilib ]; then
 else
   echo "ERROR"
 fi
-
