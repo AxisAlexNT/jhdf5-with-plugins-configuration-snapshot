@@ -48,7 +48,11 @@ HDF5_USE_AUTOTOOLS=""
 resolve_workflow_preset() {
 	local requested="$1"
 	local source_dir="$2"
-	mapfile -t available_presets < <(
+	local available_presets=()
+	local available_preset
+	while IFS= read -r available_preset; do
+		available_presets+=("$available_preset")
+	done < <(
 		cmake -S "$source_dir" --list-presets 2>/dev/null | \
 		awk '
 			/^Available workflow presets:/{in_workflow=1; next}
@@ -84,7 +88,11 @@ resolve_workflow_preset() {
 
 	echo "Could not resolve workflow preset '$requested' to any available workflow preset." >&2
 	echo "Available workflow presets:" >&2
-	printf '  %s\n' "${available_presets[@]}" >&2
+	if [[ "${#available_presets[@]}" -gt 0 ]]; then
+		printf '  %s\n' "${available_presets[@]}" >&2
+	else
+		echo "  (none available or cmake --list-presets parsing failed)" >&2
+	fi
 	return 1
 }
 

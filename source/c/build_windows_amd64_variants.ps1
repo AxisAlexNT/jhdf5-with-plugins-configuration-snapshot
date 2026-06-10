@@ -103,6 +103,9 @@ function Get-AvailableWorkflowPresets {
     }
   }
 
+  if (-not $presets -or $presets.Count -eq 0) {
+    return New-Object System.Collections.Generic.HashSet[string]
+  }
   return $presets
 }
 
