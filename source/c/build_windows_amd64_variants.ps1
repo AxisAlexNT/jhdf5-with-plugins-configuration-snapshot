@@ -117,6 +117,8 @@ function Resolve-CMakePreset {
 
   $workflowPresets = Get-CMakePresetList -SourceDir $SourceDir -SectionName "workflow"
   $configurePresets = Get-CMakePresetList -SourceDir $SourceDir -SectionName "configure"
+  if ($null -eq $workflowPresets) { $workflowPresets = New-Object System.Collections.Generic.List[string] }
+  if ($null -eq $configurePresets) { $configurePresets = New-Object System.Collections.Generic.List[string] }
 
   $script:USE_CMAKE_WORKFLOW = $workflowPresets.Count -gt 0
   if (-not $script:USE_CMAKE_WORKFLOW -and $configurePresets.Count -gt 0) {
@@ -136,6 +138,7 @@ function Resolve-CMakePreset {
   $availablePresets = if ($script:USE_CMAKE_WORKFLOW) { $workflowPresets } else { $configurePresets }
   foreach ($candidate in $candidatePresets) {
     $candidate = Normalize-CMakePreset -Preset $candidate
+    if ([string]::IsNullOrWhiteSpace($candidate)) { continue }
     if ($availablePresets.Contains($candidate)) {
       return $candidate
     }
@@ -148,6 +151,16 @@ function Resolve-CMakePreset {
       }
       if ($workflowCandidate -ne $candidate -and $configurePresets.Contains($workflowCandidate)) {
         return $workflowCandidate
+      }
+    }
+  }
+
+  if ($candidatePresets.Length -gt 0) {
+    foreach ($candidate in $candidatePresets) {
+      $candidate = Normalize-CMakePreset -Preset $candidate
+      if (-not [string]::IsNullOrWhiteSpace($candidate)) {
+        Write-Host "[jhdf5] Falling back to requested preset '$candidate' without preset-section validation."
+        return $candidate
       }
     }
   }
@@ -216,12 +229,19 @@ foreach ($variant in $Variants) {
 
   Push-Location $sourceDir
   try {
-    if ($script:USE_CMAKE_WORKFLOW) {
+  if ($script:USE_CMAKE_WORKFLOW) {
+    try {
       Invoke-NativeTool "cmake" @("--workflow", "--preset", $env:CMAKE_PRESET, "--fresh")
-    } else {
+    } catch {
+      Write-Warning "Workflow preset '$($env:CMAKE_PRESET)' failed; retrying with configure/build fallback."
+      $script:USE_CMAKE_WORKFLOW = $false
       Invoke-NativeTool "cmake" @("--preset", $env:CMAKE_PRESET, "--fresh")
       Invoke-NativeTool "cmake" @("--build", "--preset", (Resolve-TestBuildPreset -Preset $env:CMAKE_PRESET))
     }
+  } else {
+      Invoke-NativeTool "cmake" @("--preset", $env:CMAKE_PRESET, "--fresh")
+      Invoke-NativeTool "cmake" @("--build", "--preset", (Resolve-TestBuildPreset -Preset $env:CMAKE_PRESET))
+  }
   } finally {
     Pop-Location
   }

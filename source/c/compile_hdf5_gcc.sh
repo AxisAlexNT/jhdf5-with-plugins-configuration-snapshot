@@ -52,7 +52,10 @@ resolve_workflow_preset() {
 	local available_presets=""
 	local cmake_presets
 	BUILD_WITH_WORKFLOW=1
-	cmake_presets="$(cmake -S "$source_dir" --list-presets 2>/dev/null)"
+	if ! cmake_presets="$(cmake -S "$source_dir" --list-presets 2>&1)"; then
+		echo "Warning: cmake --list-presets returned non-zero status for $source_dir. Falling back to preset-guessing mode." >&2
+		echo "$cmake_presets" >&2
+	fi
 
 	available_presets="$(printf '%s\n' "$cmake_presets" | awk '
 		/^Available workflow presets:/{in_section=1; next}
@@ -89,9 +92,13 @@ resolve_workflow_preset() {
 	)
 	local candidate
 	local line
+	local fallback=""
 	for candidate in "${candidates[@]}"; do
 		candidate="$(normalize_preset "$candidate")"
 		[[ -z "$candidate" ]] && continue
+		if [[ -z "$fallback" ]]; then
+			fallback="$candidate"
+		fi
 		while IFS= read -r line; do
 			if [[ "$candidate" == "$line" ]]; then
 				echo "$candidate"
@@ -99,6 +106,12 @@ resolve_workflow_preset() {
 			fi
 		done <<<"${available_presets}"
 	done
+
+	if [[ -n "$fallback" ]]; then
+		echo "Could not validate CMake preset '$requested' against discovered presets; using fallback '$fallback'." >&2
+		echo "$fallback"
+		return 0
+	fi
 
 	echo "Could not resolve CMake preset '$requested' to any available preset." >&2
 	if [[ "$BUILD_WITH_WORKFLOW" -eq 1 ]]; then
@@ -322,11 +335,16 @@ if [[ ! -z $CMAKE_HDF5 ]]; then
 	CMAKE_PRESET="$(resolve_workflow_preset "$CMAKE_PRESET" "$SRCDIR")"
 	if [[ "$BUILD_WITH_WORKFLOW" -eq 1 ]]; then
 		cmake_args=(--workflow --preset="$CMAKE_PRESET" --fresh)
+		if ! cmake "${cmake_args[@]}" > >(tee -a cmake.stdout.log) 2> >(tee -a cmake.stderr.log >&2); then
+			echo "Workflow preset execution failed for '$CMAKE_PRESET'; retrying with configure/build preset sequence." >&2
+			BUILD_WITH_WORKFLOW=0
+			cmake_args=(--preset="$CMAKE_PRESET" --fresh)
+			cmake "${cmake_args[@]}" > >(tee -a cmake.stdout.log) 2> >(tee -a cmake.stderr.log >&2)
+			cmake --build --preset="$CMAKE_PRESET" > >(tee -a cmake.stdout.log) 2> >(tee -a cmake.stderr.log >&2)
+		fi
 	else
 		cmake_args=(--preset="$CMAKE_PRESET" --fresh)
-	fi
-	cmake "${cmake_args[@]}" > >(tee -a cmake.stdout.log) 2> >(tee -a cmake.stderr.log >&2)
-	if [[ "$BUILD_WITH_WORKFLOW" -ne 1 ]]; then
+		cmake "${cmake_args[@]}" > >(tee -a cmake.stdout.log) 2> >(tee -a cmake.stderr.log >&2)
 		cmake --build --preset="$CMAKE_PRESET" > >(tee -a cmake.stdout.log) 2> >(tee -a cmake.stderr.log >&2)
 	fi
 	cd ..
