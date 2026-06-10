@@ -74,8 +74,9 @@ cp "$SRCDIR/src/H5win32defs.h" "$BUILDDIR/jni/"
 cp "$SRCDIR/src/H5private.h" "$BUILDDIR/jni/"
 
 HDF5_CMAKE_PRESET="${CMAKE_PRESET:-hict-StdShar-GNUC-notest-noexamples}"
-PDIR="$BUILDDIR/hdf5-$VERSION/build110/$HDF5_CMAKE_PRESET/_CPack_Packages/Linux/TGZ/HDF5-1.10.11-Linux/HDF_Group/HDF5/1.10.11/"
-BDIR="$BUILDDIR/hdf5-$VERSION/build110/$HDF5_CMAKE_PRESET/"
+HDF5_PACKAGE_PRESET="${HDF5_CMAKE_PRESET/-notest/}"
+PDIR="$BUILDDIR/hdf5-$VERSION/build110/$HDF5_PACKAGE_PRESET/_CPack_Packages/Linux/TGZ/HDF5-1.10.11-Linux/HDF_Group/HDF5/1.10.11/"
+BDIR="$BUILDDIR/hdf5-$VERSION/build110/$HDF5_PACKAGE_PRESET/"
 HDF5_PUBLIC_INCLUDE="$PDIR/include"
 if [[ ! -d "$HDF5_PUBLIC_INCLUDE" ]]; then
 	HDF5_PUBLIC_INCLUDE="$BDIR/src"
@@ -88,7 +89,7 @@ if [[ -d "$BDIR" ]]; then
 		STATIC_LIBS+=("$lib_path")
 	done < <(find "$BDIR" -type f -name "*.a" -print)
 else
-	echo "::error file=${SCRIPT_PATH}/compile_linux_arm64.sh,line=80::Expected HDF5 build directory was not found: ${BDIR}"
+	echo "::error file=${SCRIPT_PATH}/compile_linux_arm64.sh,line=80::Expected HDF5 build directory was not found: ${BDIR} (workflow preset ${HDF5_CMAKE_PRESET} maps to package preset ${HDF5_PACKAGE_PRESET})"
 	exit 1
 fi
 

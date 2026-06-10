@@ -21,7 +21,7 @@ CMAKE_HDF5="1"
 HDF5_CLEAN="1"
 if [ -z "${CMAKE_PRESET+x}" ]; then
 	case "$(uname -s)" in
-		Darwin) CMAKE_PRESET="ci-StdShar-Clang" ;;
+		Darwin) CMAKE_PRESET="hict-StdShar-Clang-notest" ;;
 		*) CMAKE_PRESET="hict-StdShar-GNUC-notest-noexamples" ;;
 	esac
 fi

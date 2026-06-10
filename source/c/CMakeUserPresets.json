@@ -145,6 +145,17 @@
         "ci-Java",
         "hict-StdShar-noexamples"
       ]
+    },
+    {
+      "name": "hict-StdShar-Clang",
+      "hidden": true,
+      "generator": "Unix Makefiles",
+      "inherits": [
+        "ci-StdShar-Clang"
+      ],
+      "cacheVariables": {
+        "HAVE_FDOPEN": "1"
+      }
     }
   ],
   "buildPresets": [
@@ -174,6 +185,15 @@
       "inherits": [
         "ci-x64-Release-GNUC"
       ]
+    },
+    {
+      "name": "hict-StdShar-Clang",
+      "description": "Clang Standard Build for macOS (Release) for HiCT version of jHDF5 with plugins",
+      "configurePreset": "hict-StdShar-Clang",
+      "verbose": false,
+      "inherits": [
+        "ci-StdShar-Clang"
+      ]
     }
   ],
   "testPresets": [
@@ -194,6 +214,13 @@
       "configurePreset": "hict-StdShar-GNUC",
       "inherits": [
         "ci-x64-Release-GNUC"
+      ]
+    },
+    {
+      "name": "hict-StdShar-Clang",
+      "configurePreset": "hict-StdShar-Clang",
+      "inherits": [
+        "ci-StdShar-Clang"
       ]
     }
   ],
@@ -216,6 +243,15 @@
       "name": "hict-StdShar-GNUC-noexamples",
       "configurePreset": "hict-StdShar-GNUC-noexamples",
       "inherits": "ci-x64-Release-GNUC",
+      "output": {
+        "debug":false,
+        "verbose": false
+      }
+    },
+    {
+      "name": "hict-StdShar-Clang",
+      "configurePreset": "hict-StdShar-Clang",
+      "inherits": "ci-StdShar-Clang",
       "output": {
         "debug":false,
         "verbose": false
@@ -261,6 +297,14 @@
         {"type": "configure", "name": "hict-StdShar-GNUC-noexamples"},
         {"type": "build", "name": "hict-StdShar-GNUC-noexamples"},
         {"type": "package", "name": "hict-StdShar-GNUC-noexamples"}
+      ]
+    },
+    {
+      "name": "hict-StdShar-Clang-notest",
+      "steps": [
+        {"type": "configure", "name": "hict-StdShar-Clang"},
+        {"type": "build", "name": "hict-StdShar-Clang"},
+        {"type": "package", "name": "hict-StdShar-Clang"}
       ]
     }
   ]
