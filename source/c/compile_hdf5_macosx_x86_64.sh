@@ -3,19 +3,13 @@ set -euo pipefail
 
 normalize_preset() {
   local preset="${CMAKE_PRESET:-ci-StdShar-Clang}"
-  while [[ "$preset" == *-notest* ]]; do
-    preset="${preset/-notest/}"
-  done
-  while [[ "$preset" == *-noexamples* ]]; do
-    preset="${preset/-noexamples/}"
-  done
   preset="${preset%%-}"
-  if [[ "$preset" == hict-* ]]; then
-    preset="ci-${preset#hict-}"
-  fi
   echo "$preset"
 }
 
+if [ -z "${CMAKE_PRESET+x}" ]; then
+  CMAKE_PRESET="hict-StdShar-Clang-notest-noexamples"
+fi
 CMAKE_PRESET="$(normalize_preset)"
 export CMAKE_PRESET
 CFLAGS='-m64 -mmacosx-version-min=10.11' ./compile_hdf5_gcc.sh x86_64

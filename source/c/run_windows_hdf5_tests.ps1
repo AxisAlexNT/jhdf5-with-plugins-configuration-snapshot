@@ -35,6 +35,28 @@ function Invoke-DeveloperCommandPromptEnvironment {
   }
 }
 
+function Resolve-TestBuildDirectory {
+  param([string] $Variant)
+
+  $outputVariant = $Variant
+  if ($Variant -eq "baseline") {
+    $outputVariant = "avx2"
+  }
+
+  $buildRoot = Join-Path $BuildRoot "CMake-hdf5-1.10.11-${outputVariant}\hdf5-1.10.11"
+  $candidates = @(
+    "hict-StdShar-MSVC",
+    "ci-StdShar-MSVC"
+  )
+  foreach ($candidate in $candidates) {
+    $testDir = Join-Path $buildRoot "build110\${candidate}"
+    if (Test-Path $testDir) {
+      return $testDir
+    }
+  }
+  return Join-Path $buildRoot "build110\hict-StdShar-MSVC"
+}
+
 function Run-TestPreset {
   param([string] $Variant)
 
@@ -43,12 +65,7 @@ function Run-TestPreset {
     throw "ctest was not found in PATH. Install/update Visual Studio/CMake toolchain before running tests." 
   }
 
-  $outputVariant = $Variant
-  if ($Variant -eq "baseline") {
-    $outputVariant = "avx2"
-  }
-
-  $testDir = Join-Path $BuildRoot "CMake-hdf5-1.10.11-${outputVariant}\hdf5-1.10.11\build110\ci-StdShar-MSVC"
+  $testDir = Resolve-TestBuildDirectory -Variant $Variant
 
   if (-not (Test-Path $testDir)) {
     Write-Host "[jhdf5-tests] Test directory not found for variant '${Variant}' (expected: ${testDir}). Skipping." 

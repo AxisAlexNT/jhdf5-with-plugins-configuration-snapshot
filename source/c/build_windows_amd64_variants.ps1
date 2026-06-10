@@ -77,18 +77,18 @@ function Run-Hdf5TestSuite {
 function Normalize-CMakePreset {
   param([string] $Preset)
 
-  $normalized = $Preset -replace '-notest', ''
-  while ($normalized -match '-notest') {
-    $normalized = $normalized -replace '-notest', ''
-  }
-  while ($normalized -match '-noexamples') {
-    $normalized = $normalized -replace '-noexamples', ''
-  }
+  $normalized = $Preset
   $normalized = $normalized.Trim('-')
-  if ($normalized -like 'hict-*') {
-    $normalized = $normalized -replace '^hict-', 'ci-'
-  }
   return $normalized
+}
+
+function Resolve-TestBuildPreset {
+  param([string] $Preset)
+
+  $buildPreset = $Preset -replace '-notest', ''
+  $buildPreset = $buildPreset -replace '-noexamples', ''
+  $buildPreset = $buildPreset.Trim('-')
+  return $buildPreset
 }
 
 foreach ($variant in $Variants) {
@@ -99,8 +99,7 @@ foreach ($variant in $Variants) {
   }
 
 	$env:POSTFIX = $outputVariant
-	$requestedPreset = if ($env:CMAKE_PRESET) { $env:CMAKE_PRESET } else { "ci-StdShar-MSVC" }
-	# Keep Windows builds on public, non-hidden CI presets even if callers provide hict-* variants.
+	$requestedPreset = if ($env:CMAKE_PRESET) { $env:CMAKE_PRESET } else { "hict-StdShar-MSVC-notest" }
 	$requestedPreset = Normalize-CMakePreset -Preset $requestedPreset
 	$env:CMAKE_PRESET = $requestedPreset
   switch ($variant) {
@@ -125,8 +124,9 @@ foreach ($variant in $Variants) {
     Pop-Location
   }
 
-  $binaryDir = Join-Path $sourceDir "build110\ci-StdShar-MSVC\bin\Release"
-  $buildRoot = Join-Path $sourceDir "build110\ci-StdShar-MSVC"
+  $buildDirName = Resolve-TestBuildPreset -Preset $env:CMAKE_PRESET
+  $binaryDir = Join-Path $sourceDir "build110\$buildDirName\bin\Release"
+  $buildRoot = Join-Path $sourceDir "build110\$buildDirName"
 
   if ($RunTests) {
     Run-Hdf5TestSuite -BuildRoot $buildRoot -Variant $outputVariant

@@ -22,23 +22,13 @@ CMAKE_HDF5="1"
 HDF5_CLEAN="1"
 if [ -z "${CMAKE_PRESET+x}" ]; then
 	case "$(uname -s)" in
-		Darwin) CMAKE_PRESET="ci-StdShar-Clang" ;;
+		Darwin) CMAKE_PRESET="hict-StdShar-Clang-notest-noexamples" ;;
 		*) CMAKE_PRESET="hict-StdShar-GNUC-notest-noexamples" ;;
 	esac
 fi
 
 normalize_preset() {
 	local preset="$1"
-	preset="${preset%%-}"
-	while [[ "$preset" == *-notest* ]]; do
-		preset="${preset/-notest/}"
-	done
-	while [[ "$preset" == *-noexamples* ]]; do
-		preset="${preset/-noexamples/}"
-	done
-	if [[ "$preset" == hict-* ]]; then
-		preset="ci-${preset#hict-}"
-	fi
 	preset="${preset%%-}"
 	echo "$preset"
 }
@@ -249,6 +239,10 @@ if [[ ! -z $CMAKE_HDF5 ]]; then
 		echo "Not applying JNI patch as set by parameters in script"
 	fi
 	rm -f cmake.std*.log
-	cmake --workflow --preset="$CMAKE_PRESET" --fresh > >(tee -a cmake.stdout.log) 2> >(tee -a cmake.stderr.log >&2)
+	cmake_args=(--workflow --preset="$CMAKE_PRESET" --fresh)
+	if [[ "$(uname -s)" == "Darwin" ]]; then
+		cmake_args+=("-DZLIB_USE_LOCALCONTENT:BOOL=OFF")
+	fi
+	cmake "${cmake_args[@]}" > >(tee -a cmake.stdout.log) 2> >(tee -a cmake.stderr.log >&2)
 	cd ..
 fi

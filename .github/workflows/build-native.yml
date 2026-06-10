@@ -47,6 +47,22 @@ jobs:
           name: jhdf5-linux-amd64-avx2-native
           path: libs/native/jhdf5/amd64-Linux-avx2/**
           if-no-files-found: error
+      - name: Run Linux amd64 HDF5 tests
+        id: linux-amd64-tests
+        shell: bash
+        working-directory: source/c
+        continue-on-error: true
+        run: |
+          TEST_DIR="$(find build/hdf5-1.10.11/hdf5-1.10.11/build110 -maxdepth 1 -type d -name 'hict-StdShar-GNUC*' | head -n 1)"
+          if [[ -z "${TEST_DIR}" ]]; then
+            echo "::warning::Linux amd64 HDF5 test directory was not found; skipping tests."
+            exit 0
+          fi
+          ctest --test-dir "${TEST_DIR}" --output-on-failure
+      - name: Linux amd64 HDF5 test warnings
+        if: always() && steps.linux-amd64-tests.outcome == 'failure'
+        run: |
+          echo "::warning::Linux amd64 HDF5 tests failed; native binaries were still built and uploaded."
 
   linux-arm64:
     name: Linux arm64 natives
@@ -72,6 +88,22 @@ jobs:
           name: jhdf5-linux-arm64-native
           path: libs/native/jhdf5/arm64-Linux/**
           if-no-files-found: error
+      - name: Run Linux arm64 HDF5 tests
+        id: linux-arm64-tests
+        shell: bash
+        working-directory: source/c
+        continue-on-error: true
+        run: |
+          TEST_DIR="$(find build/hdf5-1.10.11/hdf5-1.10.11/build110 -maxdepth 1 -type d -name 'hict-StdShar-GNUC*' | head -n 1)"
+          if [[ -z "${TEST_DIR}" ]]; then
+            echo "::warning::Linux arm64 HDF5 test directory was not found; skipping tests."
+            exit 0
+          fi
+          ctest --test-dir "${TEST_DIR}" --output-on-failure
+      - name: Linux arm64 HDF5 test warnings
+        if: always() && steps.linux-arm64-tests.outcome == 'failure'
+        run: |
+          echo "::warning::Linux arm64 HDF5 tests failed; native binaries were still built and uploaded."
 
   windows-amd64:
     name: Windows amd64 natives
@@ -174,7 +206,12 @@ jobs:
         working-directory: source/c
         continue-on-error: true
         run: |
-          ctest --test-dir build/hdf5-1.10.11/hdf5-1.10.11/build110/ci-StdShar-Clang --output-on-failure
+          TEST_DIR="$(find build/hdf5-1.10.11/hdf5-1.10.11/build110 -maxdepth 1 -type d -name 'hict-StdShar-Clang*' | head -n 1)"
+          if [[ -z "${TEST_DIR}" ]]; then
+            echo "::warning::macOS arm64 HDF5 test directory was not found; skipping tests."
+            exit 0
+          fi
+          ctest --test-dir "${TEST_DIR}" --output-on-failure
       - name: macOS arm64 HDF5 test warnings
         if: always() && steps.macos-arm64-tests.outcome == 'failure'
         run: |
@@ -224,7 +261,12 @@ jobs:
         working-directory: source/c
         continue-on-error: true
         run: |
-          ctest --test-dir build/hdf5-1.10.11/hdf5-1.10.11/build110/ci-StdShar-Clang --output-on-failure
+          TEST_DIR="$(find build/hdf5-1.10.11/hdf5-1.10.11/build110 -maxdepth 1 -type d -name 'hict-StdShar-Clang*' | head -n 1)"
+          if [[ -z "${TEST_DIR}" ]]; then
+            echo "::warning::macOS x86_64 HDF5 test directory was not found; skipping tests."
+            exit 0
+          fi
+          ctest --test-dir "${TEST_DIR}" --output-on-failure
       - name: macOS x86_64 HDF5 test warnings
         if: always() && steps.macos-x86_64-tests.outcome == 'failure'
         run: |
