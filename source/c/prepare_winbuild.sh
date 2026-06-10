@@ -38,6 +38,16 @@ cd "$PREPARED_DIR"
 cp -af ../../*.tar.gz .
 
 cd hdf5-$VERSION
-patch --ignore-whitespace --fuzz 10 -p2 < ../../../cmake_add_sources.diff
+if patch --ignore-whitespace --fuzz 10 -p2 < ../../../cmake_add_sources.diff; then
+  echo "Applied JNI patch"
+else
+  if [[ -f java/src/jni/CMakeLists.txt.rej ]]; then
+    echo "JNI patch was already applied or partially applied; continuing with current jni sources."
+    rm -f java/src/jni/CMakeLists.txt.rej
+  else
+    echo "JNI patch failed unexpectedly."
+    exit 1
+  fi
+fi
 
 cp -af ../../../CMakeUserPresets.json .

@@ -22,7 +22,7 @@ CMAKE_HDF5="1"
 HDF5_CLEAN="1"
 if [ -z "${CMAKE_PRESET+x}" ]; then
 	case "$(uname -s)" in
-		Darwin) CMAKE_PRESET="hict-StdShar-Clang-notest-noexamples" ;;
+		Darwin) CMAKE_PRESET="hict-StdShar-Clang-notest" ;;
 		*) CMAKE_PRESET="hict-StdShar-GNUC-notest-noexamples" ;;
 	esac
 fi
@@ -99,7 +99,18 @@ resolve_workflow_preset() {
 	done
 
 	if [[ -n "$fallback" ]]; then
-		echo "Could not validate CMake preset '$requested' against discovered presets; using fallback '$fallback'." >&2
+		echo "Could not validate CMake preset '$requested' against discovered presets; attempting compatibility fallback." >&2
+		local fallback_compat=("${requested/-notest-noexamples/}" "${requested/-notest/}" "${requested/-noexamples/}" "${requested}")
+		for candidate in "${fallback_compat[@]}"; do
+			candidate="$(normalize_preset "$candidate")"
+			[[ -z "$candidate" ]] && continue
+			while IFS= read -r line; do
+				if [[ "$candidate" == "$line" ]]; then
+					echo "$candidate"
+					return 0
+				fi
+			done <<<"${available_presets}"
+		done
 		echo "$fallback"
 		return 0
 	fi

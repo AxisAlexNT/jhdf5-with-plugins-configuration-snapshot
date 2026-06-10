@@ -162,7 +162,14 @@ function Resolve-CMakePreset {
   }
 
   if ($candidatePresets.Length -gt 0) {
-    foreach ($candidate in $candidatePresets) {
+    $fallbackCandidates = @(
+      ($Preset -replace '-notest-noexamples', ''),
+      ($Preset -replace '-notest', ''),
+      ($Preset -replace '-noexamples', ''),
+      $Preset
+    )
+    $fallbackCandidates = $fallbackCandidates | Where-Object { $_ } | Select-Object -Unique
+    foreach ($candidate in $fallbackCandidates) {
       $candidate = Normalize-CMakePreset -Preset $candidate
       if (-not [string]::IsNullOrWhiteSpace($candidate)) {
         Write-Host "[jhdf5] Falling back to requested preset '$candidate' without preset-section validation."
@@ -215,7 +222,8 @@ foreach ($variant in $Variants) {
   }
 
 	$env:POSTFIX = $outputVariant
-	$requestedPreset = if ($env:CMAKE_PRESET) { $env:CMAKE_PRESET } else { "hict-StdShar-MSVC-notest-noexamples" }
+  # Prefer a preset guaranteed to exist in the CMake presets shipped with this repo.
+  $requestedPreset = if ($env:CMAKE_PRESET) { $env:CMAKE_PRESET } else { "hict-StdShar-MSVC-notest" }
   $requestedPreset = Normalize-CMakePreset -Preset $requestedPreset
   $sourceDir = Join-Path $PSScriptRoot "build\CMake-hdf5-1.10.11-$outputVariant\hdf5-1.10.11"
 	$env:CMAKE_PRESET = Resolve-CMakeWorkflowPreset -Preset $requestedPreset -SourceDir $sourceDir
