@@ -93,6 +93,8 @@ docker run --rm -i \
     python3 -m pip install --upgrade "cmake==${CMAKE_VERSION}" ninja >/dev/null
 
     export PATH="$(dirname "${PYBIN}"):/usr/local/bin:${PATH}"
+    export CC="${CC:-gcc}"
+    export CXX="${CXX:-g++}"
     python3 --version
     gcc --version | head -n 1
     g++ --version | head -n 1

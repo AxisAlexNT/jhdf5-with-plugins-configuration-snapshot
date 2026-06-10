@@ -148,7 +148,6 @@
     },
     {
       "name": "hict-StdShar-Clang",
-      "hidden": true,
       "generator": "Unix Makefiles",
       "inherits": [
         "ci-StdShar-Clang"

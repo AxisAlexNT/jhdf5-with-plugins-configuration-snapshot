@@ -60,8 +60,9 @@ build_variant() {
   echo "[jhdf5] Building Linux amd64 $output_variant variant"
   (
     cd "$SCRIPT_PATH"
-    CMAKE_PRESET="$cmake_preset" POSTFIX="$output_variant" CFLAGS="$cflags" ./compile_hdf5_gcc.sh amd64 ""
+    CC="${CC:-gcc}" CXX="${CXX:-g++}" CMAKE_PRESET="$cmake_preset" POSTFIX="$output_variant" CFLAGS="$cflags" ./compile_hdf5_gcc.sh amd64 ""
     POSTFIX="$output_variant" \
+      CC="${CC:-gcc}" CXX="${CXX:-g++}" \
       CMAKE_PRESET="$cmake_preset" \
       CFLAGS="$cflags" \
       JHDF5_ADDITIONAL_GCC_FLAGS="$jhdf5_flags" \

@@ -9,6 +9,7 @@ source version.sh
 SOURCE_VERSION="$VERSION"
 PLATFORM="$1"
 PATCHES="${2:-}"
+POSTFIX="${POSTFIX:-}"
 
 if [ -z "${CFLAGS+x}" ]; then
   CFLAGS="-O3 -fPIC"
@@ -36,6 +37,8 @@ if [ -z ${REPLACE_JNI+x} ]; then
  fi
 
 export CMAKE_POLICY_VERSION_MINIMUM="${CMAKE_POLICY_VERSION_MINIMUM:-3.5}"
+export CC="${CC:-gcc}"
+export CXX="${CXX:-g++}"
 
 
 if [ "$PLATFORM" != "i386" -a "$PLATFORM" != "x86" -a "$PLATFORM" != "amd64" -a "$PLATFORM" != "x86_64" -a "$PLATFORM" != "armv6l" -a "$PLATFORM" != "aarch64" ]; then
