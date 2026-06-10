@@ -359,17 +359,26 @@ if [[ ! -z $CMAKE_HDF5 ]]; then
 		echo "Could not resolve a valid CMake preset for workflow/build selection." >&2
 		exit 1
 	fi
+	CMAKE_EXTRA_ARGS=()
+	PLUGIN_TAR="$SRCDIR/../hdf5_plugins.tar.gz"
+	if [[ -f "$PLUGIN_TAR" ]]; then
+		CMAKE_EXTRA_ARGS+=(
+			"-DPLUGIN_TGZ_NAME:STRING=$PLUGIN_TAR"
+			"-DHDF5_ALLOW_EXTERNAL_SUPPORT:STRING=TGZ"
+			"-DHDF5_ENABLE_PLUGIN_SUPPORT:BOOL=ON"
+		)
+	fi
 	if [[ "$BUILD_WITH_WORKFLOW" -eq 1 ]]; then
-		cmake_args=(--workflow --preset="$CMAKE_PRESET" --fresh)
+		cmake_args=(--workflow --preset="$CMAKE_PRESET" "${CMAKE_EXTRA_ARGS[@]}" --fresh)
 		if ! cmake "${cmake_args[@]}" > >(tee -a cmake.stdout.log) 2> >(tee -a cmake.stderr.log >&2); then
 			echo "Workflow preset execution failed for '$CMAKE_PRESET'; retrying with configure/build preset sequence." >&2
 			BUILD_WITH_WORKFLOW=0
-			cmake_args=(--preset="$CMAKE_PRESET" --fresh)
+			cmake_args=(--preset="$CMAKE_PRESET" "${CMAKE_EXTRA_ARGS[@]}" --fresh)
 			cmake "${cmake_args[@]}" > >(tee -a cmake.stdout.log) 2> >(tee -a cmake.stderr.log >&2)
 			cmake --build --preset="$CMAKE_PRESET" > >(tee -a cmake.stdout.log) 2> >(tee -a cmake.stderr.log >&2)
 		fi
 	else
-		cmake_args=(--preset="$CMAKE_PRESET" --fresh)
+		cmake_args=(--preset="$CMAKE_PRESET" "${CMAKE_EXTRA_ARGS[@]}" --fresh)
 		cmake "${cmake_args[@]}" > >(tee -a cmake.stdout.log) 2> >(tee -a cmake.stderr.log >&2)
 		cmake --build --preset="$CMAKE_PRESET" > >(tee -a cmake.stdout.log) 2> >(tee -a cmake.stderr.log >&2)
 	fi

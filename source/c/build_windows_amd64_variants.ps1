@@ -248,6 +248,24 @@ function Resolve-TestBuildPreset {
   return $buildPreset
 }
 
+function Resolve-BuildBinaryDir {
+  param(
+    [string] $BuildRoot
+  )
+
+  $candidates = @(
+    (Join-Path $BuildRoot "bin\Release"),
+    (Join-Path $BuildRoot "bin\Debug"),
+    (Join-Path $BuildRoot "bin")
+  )
+  foreach ($path in $candidates) {
+    if (Test-Path $path) {
+      return $path
+    }
+  }
+  return (Join-Path $BuildRoot "bin")
+}
+
 foreach ($variant in $Variants) {
   $outputVariant = $variant
   if ($variant -eq "baseline") {
@@ -290,8 +308,8 @@ foreach ($variant in $Variants) {
   }
 
   $buildDirName = Resolve-TestBuildPreset -Preset $env:CMAKE_PRESET
-  $binaryDir = Join-Path $sourceDir "build110\$buildDirName\bin\Release"
   $buildRoot = Join-Path $sourceDir "build110\$buildDirName"
+  $binaryDir = Resolve-BuildBinaryDir -BuildRoot $buildRoot
 
   if ($RunTests) {
     Run-Hdf5TestSuite -BuildRoot $buildRoot -Variant $outputVariant
