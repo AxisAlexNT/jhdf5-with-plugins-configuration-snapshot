@@ -24,8 +24,26 @@ if [ -z "${CMAKE_PRESET+x}" ]; then
 	case "$(uname -s)" in
 		Darwin) CMAKE_PRESET="ci-StdShar-Clang" ;;
 		*) CMAKE_PRESET="hict-StdShar-GNUC-notest-noexamples" ;;
-		esac
+	esac
 fi
+
+normalize_preset() {
+	local preset="$1"
+	preset="${preset%%-}"
+	while [[ "$preset" == *-notest* ]]; do
+		preset="${preset/-notest/}"
+	done
+	while [[ "$preset" == *-noexamples* ]]; do
+		preset="${preset/-noexamples/}"
+	done
+	if [[ "$preset" == hict-* ]]; then
+		preset="ci-${preset#hict-}"
+	fi
+	preset="${preset%%-}"
+	echo "$preset"
+}
+
+CMAKE_PRESET="$(normalize_preset "${CMAKE_PRESET}")"
 HDF5_USE_AUTOTOOLS=""
 
 # Should java/src/jni folder be overwritten by JHDF5 patches?

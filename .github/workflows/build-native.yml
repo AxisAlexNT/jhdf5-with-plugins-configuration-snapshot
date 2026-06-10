@@ -96,19 +96,6 @@ jobs:
         shell: pwsh
         working-directory: source\c
         run: .\build_windows_amd64_variants.ps1 -Variants generic,avx2,avx512 -RunTests:$false
-      - name: Run Windows amd64 HDF5 tests
-        id: windows-amd64-tests
-        continue-on-error: true
-        shell: pwsh
-        working-directory: source\c
-        run: .\run_windows_hdf5_tests.ps1 -Variants generic,avx2,avx512
-      - name: Windows amd64 HDF5 test warnings
-        if: always() && steps.windows-amd64-tests.outcome == 'failure'
-        run: |
-          echo "::warning::Windows amd64 HDF5 tests failed; native binaries were still built and uploaded. Review logs for failures."
-      - name: Smoke-check native payload
-        shell: pwsh
-        run: Test-Path libs\native\jhdf5\amd64-Windows\jhdf5.dll
       - name: Upload Windows amd64 generic native payload
         uses: actions/upload-artifact@v6
         with:
@@ -129,6 +116,19 @@ jobs:
           name: jhdf5-windows-amd64-avx512-native
           path: libs/native/jhdf5/amd64-Windows-avx512/**
           if-no-files-found: error
+      - name: Run Windows amd64 HDF5 tests
+        id: windows-amd64-tests
+        continue-on-error: true
+        shell: pwsh
+        working-directory: source\c
+        run: .\run_windows_hdf5_tests.ps1 -Variants generic,avx2,avx512
+      - name: Windows amd64 HDF5 test warnings
+        if: always() && steps.windows-amd64-tests.outcome == 'failure'
+        run: |
+          echo "::warning::Windows amd64 HDF5 tests failed; native binaries were still built and uploaded. Review logs for failures."
+      - name: Smoke-check Windows native payload (post-upload)
+        shell: pwsh
+        run: Test-Path libs\native\jhdf5\amd64-Windows\jhdf5.dll
 
   macos-arm64:
     name: macOS arm64 natives
@@ -160,6 +160,14 @@ jobs:
         run: |
           ./compile_hdf5_macosx_aarch64.sh
           ./compile_macosx_aarch64.sh
+      - name: Upload macOS arm64 native payload
+        uses: actions/upload-artifact@v6
+        with:
+          name: jhdf5-macos-arm64-native
+          path: "libs/native/jhdf5/aarch64-Mac OS X/**"
+          if-no-files-found: error
+      - name: Smoke-check macOS arm64 native payload (post-upload)
+        run: test -f "libs/native/jhdf5/aarch64-Mac OS X/libjhdf5.jnilib"
       - name: Run macOS arm64 HDF5 tests
         id: macos-arm64-tests
         shell: bash
@@ -171,14 +179,6 @@ jobs:
         if: always() && steps.macos-arm64-tests.outcome == 'failure'
         run: |
           echo "::warning::macOS arm64 HDF5 tests failed; native binary was still built and uploaded."
-      - name: Smoke-check native payload
-        run: test -f "libs/native/jhdf5/aarch64-Mac OS X/libjhdf5.jnilib"
-      - name: Upload macOS arm64 native payload
-        uses: actions/upload-artifact@v6
-        with:
-          name: jhdf5-macos-arm64-native
-          path: "libs/native/jhdf5/aarch64-Mac OS X/**"
-          if-no-files-found: error
 
   macos-x86_64:
     name: macOS x86_64 natives
@@ -210,6 +210,14 @@ jobs:
         run: |
           ./compile_hdf5_macosx_x86_64.sh
           ./compile_macosx_x86_64.sh
+      - name: Upload macOS x86_64 native payload
+        uses: actions/upload-artifact@v6
+        with:
+          name: jhdf5-macos-x86_64-native
+          path: "libs/native/jhdf5/x86_64-Mac OS X/**"
+          if-no-files-found: error
+      - name: Smoke-check macOS x86_64 native payload (post-upload)
+        run: test -f "libs/native/jhdf5/x86_64-Mac OS X/libjhdf5.jnilib"
       - name: Run macOS x86_64 HDF5 tests
         id: macos-x86_64-tests
         shell: bash
@@ -221,14 +229,6 @@ jobs:
         if: always() && steps.macos-x86_64-tests.outcome == 'failure'
         run: |
           echo "::warning::macOS x86_64 HDF5 tests failed; native binary was still built and uploaded."
-      - name: Smoke-check native payload
-        run: test -f "libs/native/jhdf5/x86_64-Mac OS X/libjhdf5.jnilib"
-      - name: Upload macOS x86_64 native payload
-        uses: actions/upload-artifact@v6
-        with:
-          name: jhdf5-macos-x86_64-native
-          path: "libs/native/jhdf5/x86_64-Mac OS X/**"
-          if-no-files-found: error
 
   package-jar:
     name: Package and publish JHDF5 jar
@@ -342,22 +342,6 @@ jobs:
             rm -rf "${variant_dir}/.payload"
           done
 
-      - name: Validate packaged jar
-        run: |
-          jar_path="$(find build/libs -maxdepth 1 -type f -name 'sis-jhdf5-*.jar' -not -name '*-sources.jar' -not -name '*-javadoc.jar' -not -name '*-h5ar-cli-*.jar' | sort | tail -n 1)"
-          if [[ -z "${jar_path}" ]]; then
-            echo "Could not find packaged main sis-jhdf5 jar." >&2
-            exit 1
-          fi
-          jar tf "${jar_path}" | grep -q '^native/jhdf5/amd64-Linux/libjhdf5.so$'
-          jar tf "${jar_path}" | grep -q '^native/jhdf5/arm64-Linux/libjhdf5.so$'
-          jar tf "${jar_path}" | grep -q '^native/jhdf5/amd64-Windows/jhdf5.dll$'
-          jar tf "${jar_path}" | grep -q '^native/jhdf5/aarch64-Mac OS X/libjhdf5.jnilib$'
-          jar tf "${jar_path}" | grep -q '^native/jhdf5/x86_64-Mac OS X/libjhdf5.jnilib$'
-          jar tf "${jar_path}" | grep -q '^resources/libs/osx_arm64/libhdf5.dylib$'
-          jar tf "${jar_path}" | grep -q '^resources/libs/osx_64/libhdf5.dylib$'
-          jar tf "${jar_path}" | grep -q '^resources/libs/osx_arm64/libh5bshuf.dylib$'
-          jar tf "${jar_path}" | grep -q '^resources/libs/osx_64/libh5bshuf.dylib$'
       - name: Write checksum
         run: |
           for jar_path in build/libs/jhdf5-*.jar; do
@@ -371,6 +355,22 @@ jobs:
             build/libs/*.jar
             build/libs/*.sha256
           if-no-files-found: error
+      - name: Validate packaged jar (post-upload)
+        run: |
+          jar_path="$(find build/libs -maxdepth 1 -type f -name 'sis-jhdf5-*.jar' -not -name '*-sources.jar' -not -name '*-javadoc.jar' -not -name '*-h5ar-cli-*.jar' | sort | tail -n 1)"
+          if [[ -z "${jar_path}" ]]; then
+            echo "Could not find packaged main sis-jhdf5 jar." >&2
+            exit 1
+          fi
+          jar tf "${jar_path}" | grep -q '^native/jhdf5/amd64-Linux/libjhdf5.so$'
+          jar tf "${jar_path}" | grep -q '^native/jhdf5/arm64-Linux/libjhdf5.so$'
+          jar tf "${jar_path}" | grep -q '^native/jhdf5/amd64-Windows/jhdf5.dll$'
+          jar tf "${jar_path}" | grep -q '^native/jhdf5/aarch64-Mac OS X/libjhdf5.jnilib$'
+          jar tf "${jar_path}" | grep -q '^native/jhdf5/x86_64-Mac OS X/libjhdf5.jnilib$'
+          jar tf "${jar_path}" | grep -Eq '^resources/libs/osx_arm64/libhdf5\.dylib$|^resources/libs/macos_arm64/libhdf5\.dylib$'
+          jar tf "${jar_path}" | grep -Eq '^resources/libs/osx_64/libhdf5\.dylib$|^resources/libs/macos_64/libhdf5\.dylib$|^resources/libs/darwin_x86_64/libhdf5\.dylib$'
+          jar tf "${jar_path}" | grep -Eq '^resources/libs/osx_arm64/libh5bshuf\.dylib$|^resources/libs/macos_arm64/libh5bshuf\.dylib$'
+          jar tf "${jar_path}" | grep -Eq '^resources/libs/osx_64/libh5bshuf\.dylib$|^resources/libs/macos_64/libh5bshuf\.dylib$|^resources/libs/darwin_x86_64/libh5bshuf\.dylib$'
       - name: Publish jar to GitHub Release
         if: ${{ github.event_name == 'release' }}
         uses: softprops/action-gh-release@v2

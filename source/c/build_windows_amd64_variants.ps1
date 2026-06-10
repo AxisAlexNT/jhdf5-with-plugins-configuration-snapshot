@@ -74,6 +74,23 @@ function Run-Hdf5TestSuite {
   }
 }
 
+function Normalize-CMakePreset {
+  param([string] $Preset)
+
+  $normalized = $Preset -replace '-notest', ''
+  while ($normalized -match '-notest') {
+    $normalized = $normalized -replace '-notest', ''
+  }
+  while ($normalized -match '-noexamples') {
+    $normalized = $normalized -replace '-noexamples', ''
+  }
+  $normalized = $normalized.Trim('-')
+  if ($normalized -like 'hict-*') {
+    $normalized = $normalized -replace '^hict-', 'ci-'
+  }
+  return $normalized
+}
+
 foreach ($variant in $Variants) {
   $outputVariant = $variant
   if ($variant -eq "baseline") {
@@ -81,8 +98,11 @@ foreach ($variant in $Variants) {
     Write-Host "[jhdf5] Variant 'baseline' is deprecated; building the AVX2 target as '$outputVariant'."
   }
 
-  $env:POSTFIX = $outputVariant
-  $env:CMAKE_PRESET = "ci-StdShar-MSVC"
+	$env:POSTFIX = $outputVariant
+	$requestedPreset = if ($env:CMAKE_PRESET) { $env:CMAKE_PRESET } else { "ci-StdShar-MSVC" }
+	# Keep Windows builds on public, non-hidden CI presets even if callers provide hict-* variants.
+	$requestedPreset = Normalize-CMakePreset -Preset $requestedPreset
+	$env:CMAKE_PRESET = $requestedPreset
   switch ($variant) {
     "generic" { $env:CL = "/O2 /GL $initialCl" }
     "avx2" { $env:CL = "/O2 /arch:AVX2 /GL $initialCl" }
