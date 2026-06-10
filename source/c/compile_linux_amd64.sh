@@ -99,7 +99,7 @@ cd $BUILDDIR
 cp $SRCDIR/src/H5win32defs.h $BUILDDIR/jni/
 cp $SRCDIR/src/H5private.h $BUILDDIR/jni/
 
-HDF5_CMAKE_PRESET="${CMAKE_PRESET:-hict-StdShar-GNUC-noexamples}"
+HDF5_CMAKE_PRESET="${CMAKE_PRESET:-hict-StdShar-GNUC-notest-noexamples}"
 HDF5_BUILD_PRESET="${HDF5_CMAKE_PRESET}"
 resolve_build_preset() {
 	local requested="$1"

@@ -95,6 +95,9 @@ function Get-CMakePresetList {
 
   $inSection = $false
   $result = New-Object System.Collections.Generic.List[string]
+  if (-not $output) {
+    return $result
+  }
   foreach ($line in ($output -split "`r?`n")) {
     $trimmed = $line.Trim()
     if ($trimmed -eq "Available $SectionName presets:") {
@@ -136,6 +139,9 @@ function Resolve-CMakePreset {
   $candidatePresets = $candidatePresets | Where-Object { $_ } | Select-Object -Unique
 
   $availablePresets = if ($script:USE_CMAKE_WORKFLOW) { $workflowPresets } else { $configurePresets }
+  if (-not $availablePresets -or $availablePresets.Count -eq 0) {
+    $availablePresets = New-Object System.Collections.Generic.List[string]
+  }
   foreach ($candidate in $candidatePresets) {
     $candidate = Normalize-CMakePreset -Preset $candidate
     if ([string]::IsNullOrWhiteSpace($candidate)) { continue }
@@ -209,7 +215,7 @@ foreach ($variant in $Variants) {
   }
 
 	$env:POSTFIX = $outputVariant
-	$requestedPreset = if ($env:CMAKE_PRESET) { $env:CMAKE_PRESET } else { "hict-StdShar-MSVC" }
+	$requestedPreset = if ($env:CMAKE_PRESET) { $env:CMAKE_PRESET } else { "hict-StdShar-MSVC-notest-noexamples" }
   $requestedPreset = Normalize-CMakePreset -Preset $requestedPreset
   $sourceDir = Join-Path $PSScriptRoot "build\CMake-hdf5-1.10.11-$outputVariant\hdf5-1.10.11"
 	$env:CMAKE_PRESET = Resolve-CMakeWorkflowPreset -Preset $requestedPreset -SourceDir $sourceDir

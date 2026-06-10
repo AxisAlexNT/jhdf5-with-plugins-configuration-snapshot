@@ -22,23 +22,14 @@ CMAKE_HDF5="1"
 HDF5_CLEAN="1"
 if [ -z "${CMAKE_PRESET+x}" ]; then
 	case "$(uname -s)" in
-		Darwin) CMAKE_PRESET="hict-StdShar-Clang-noexamples" ;;
-		*) CMAKE_PRESET="hict-StdShar-GNUC-noexamples" ;;
+		Darwin) CMAKE_PRESET="hict-StdShar-Clang-notest-noexamples" ;;
+		*) CMAKE_PRESET="hict-StdShar-GNUC-notest-noexamples" ;;
 	esac
 fi
 
 normalize_preset() {
 	local preset="$1"
 	preset="${preset%%-}"
-	while [[ "$preset" == *-notest-noexamples ]]; do
-		preset="${preset/-notest-noexamples/}"
-	done
-	while [[ "$preset" == *-notest ]]; do
-		preset="${preset/-notest/}"
-	done
-	while [[ "$preset" == *-noexamples ]]; do
-		preset="${preset/-noexamples/}"
-	done
 	echo "$preset"
 }
 
