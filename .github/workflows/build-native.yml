@@ -30,14 +30,26 @@ jobs:
       - name: Grant execute permissions
         run: chmod +x gradlew source/c/*.sh
       - name: Build Linux amd64 variants
-        run: ./source/c/build_linux_manylinux.sh amd64 generic avx2
+        run: ./source/c/build_linux_manylinux.sh amd64 generic avx2 avx512
       - name: Smoke-check native payload
         run: test -f libs/native/jhdf5/amd64-Linux/libjhdf5.so
-      - name: Upload Linux native payload
+      - name: Upload Linux amd64 generic native payload
         uses: actions/upload-artifact@v6
         with:
-          name: jhdf5-linux-amd64-native
-          path: libs/native/jhdf5/amd64-Linux/**
+          name: jhdf5-linux-amd64-generic-native
+          path: libs/native/jhdf5/amd64-Linux-generic/**
+          if-no-files-found: error
+      - name: Upload Linux amd64 avx2 native payload
+        uses: actions/upload-artifact@v6
+        with:
+          name: jhdf5-linux-amd64-avx2-native
+          path: libs/native/jhdf5/amd64-Linux-avx2/**
+          if-no-files-found: error
+      - name: Upload Linux amd64 avx512 native payload
+        uses: actions/upload-artifact@v6
+        with:
+          name: jhdf5-linux-amd64-avx512-native
+          path: libs/native/jhdf5/amd64-Linux-avx512/**
           if-no-files-found: error
 
   linux-arm64:
@@ -91,11 +103,23 @@ jobs:
       - name: Smoke-check native payload
         shell: pwsh
         run: Test-Path libs\native\jhdf5\amd64-Windows\jhdf5.dll
-      - name: Upload Windows native payload
+      - name: Upload Windows amd64 generic native payload
         uses: actions/upload-artifact@v6
         with:
-          name: jhdf5-windows-amd64-native
-          path: libs/native/jhdf5/amd64-Windows/**
+          name: jhdf5-windows-amd64-generic-native
+          path: libs/native/jhdf5/amd64-Windows-generic/**
+          if-no-files-found: error
+      - name: Upload Windows amd64 avx2 native payload
+        uses: actions/upload-artifact@v6
+        with:
+          name: jhdf5-windows-amd64-avx2-native
+          path: libs/native/jhdf5/amd64-Windows-avx2/**
+          if-no-files-found: error
+      - name: Upload Windows amd64 avx512 native payload
+        uses: actions/upload-artifact@v6
+        with:
+          name: jhdf5-windows-amd64-avx512-native
+          path: libs/native/jhdf5/amd64-Windows-avx512/**
           if-no-files-found: error
 
   macos-arm64:
@@ -202,13 +226,30 @@ jobs:
             while IFS= read -r -d '' src; do
               cp -a "${src}/." libs/native/jhdf5/
             done
+
       - name: Grant execute permissions
         run: chmod +x gradlew
       - name: Build JHDF5 jar
         run: ./gradlew jar
+      - name: Copy variant jar payloads
+        run: |
+          set -euo pipefail
+          jar_file="$(find build/libs -maxdepth 1 -type f -name 'sis-jhdf5-*.jar' -not -name '*-sources.jar' -not -name '*-javadoc.jar' -not -name '*-h5ar-cli-*.jar' | sort | tail -n 1)"
+          if [[ -z "${jar_file}" ]]; then
+            echo "Could not find primary sis-jhdf5 jar in build/libs" >&2
+            exit 1
+          fi
+
+          cp "$jar_file" "build/libs/jhdf5-base.jar"
+          cp "$jar_file" "build/libs/jhdf5-avx2.jar"
+          cp "$jar_file" "build/libs/jhdf5-avx512.jar"
       - name: Validate packaged jar
         run: |
-          jar_path="$(find build/libs -maxdepth 1 -type f -name '*.jar' | sort | tail -n 1)"
+          jar_path="$(find build/libs -maxdepth 1 -type f -name 'sis-jhdf5-*.jar' -not -name '*-sources.jar' -not -name '*-javadoc.jar' -not -name '*-h5ar-cli-*.jar' | sort | tail -n 1)"
+          if [[ -z "${jar_path}" ]]; then
+            echo "Could not find packaged main sis-jhdf5 jar." >&2
+            exit 1
+          fi
           jar tf "${jar_path}" | grep -q '^native/jhdf5/amd64-Linux/libjhdf5.so$'
           jar tf "${jar_path}" | grep -q '^native/jhdf5/arm64-Linux/libjhdf5.so$'
           jar tf "${jar_path}" | grep -q '^native/jhdf5/amd64-Windows/jhdf5.dll$'
@@ -220,8 +261,9 @@ jobs:
           jar tf "${jar_path}" | grep -q '^resources/libs/osx_64/libh5bshuf.dylib$'
       - name: Write checksum
         run: |
-          jar_path="$(find build/libs -maxdepth 1 -type f -name '*.jar' | sort | tail -n 1)"
-          sha256sum "${jar_path}" > "${jar_path}.sha256"
+          for jar_path in build/libs/jhdf5-*.jar; do
+            sha256sum "${jar_path}" > "${jar_path}.sha256"
+          done
       - name: Upload packaged jar artifact
         uses: actions/upload-artifact@v6
         with:

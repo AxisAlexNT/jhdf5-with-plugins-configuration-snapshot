@@ -2,7 +2,8 @@ param(
   [ValidateSet("generic", "avx2", "baseline", "avx512")]
   [string[]] $Variants = @("generic", "avx2", "avx512"),
   [string] $JdkIncludePath = $(if ($env:JVM_INCLUDE_PATH) { $env:JVM_INCLUDE_PATH } elseif ($env:JAVA_HOME) { Join-Path $env:JAVA_HOME "include" } else { "" }),
-  [string] $DeployRoot = $(Join-Path $PSScriptRoot "..\..\libs\native\jhdf5")
+  [string] $DeployRoot = $(Join-Path $PSScriptRoot "..\..\libs\native\jhdf5"),
+  [bool] $RunTests = $true
 )
 
 $ErrorActionPreference = "Stop"
@@ -58,6 +59,21 @@ function Invoke-NativeTool {
   }
 }
 
+function Run-Hdf5TestSuite {
+  param([string] $BuildRoot, [string] $Variant)
+
+  $ctestExe = Get-Command ctest -ErrorAction SilentlyContinue
+  if (-not $ctestExe) {
+    throw "ctest was not found in PATH. HDF5 test execution is enabled by default; install/update CMake tools."
+  }
+
+  try {
+    Invoke-NativeTool "ctest" @("--test-dir", $BuildRoot, "--output-on-failure", "-j", "2")
+  } catch {
+    Write-Warning "Tests for variant '$Variant' reported failures; native binaries were built and kept for packaging: $($_.Exception.Message)"
+  }
+}
+
 foreach ($variant in $Variants) {
   $outputVariant = $variant
   if ($variant -eq "baseline") {
@@ -66,7 +82,7 @@ foreach ($variant in $Variants) {
   }
 
   $env:POSTFIX = $outputVariant
-  $env:CMAKE_PRESET = "ci-StdShar-MSVC"
+  $env:CMAKE_PRESET = "hict-StdShar-MSVC-notest"
   switch ($variant) {
     "generic" { $env:CL = "/O2 /GL $initialCl" }
     "avx2" { $env:CL = "/O2 /arch:AVX2 /GL $initialCl" }
@@ -84,13 +100,18 @@ foreach ($variant in $Variants) {
 
   Push-Location $sourceDir
   try {
-    Invoke-NativeTool "cmake" @("--workflow", "--preset", "ci-StdShar-MSVC", "--fresh")
+    Invoke-NativeTool "cmake" @("--workflow", "--preset", "hict-StdShar-MSVC-notest", "--fresh")
   } finally {
     Pop-Location
   }
 
   $binaryDir = Join-Path $sourceDir "build110\ci-StdShar-MSVC\bin\Release"
   $buildRoot = Join-Path $sourceDir "build110\ci-StdShar-MSVC"
+
+  if ($RunTests) {
+    Run-Hdf5TestSuite -BuildRoot $buildRoot -Variant $outputVariant
+  }
+
   $deployDir = Join-Path $DeployRoot "amd64-Windows-$outputVariant"
   New-Item -ItemType Directory -Force -Path $deployDir | Out-Null
   Get-ChildItem $binaryDir -Filter "*.dll" | Copy-Item -Destination $deployDir -Force

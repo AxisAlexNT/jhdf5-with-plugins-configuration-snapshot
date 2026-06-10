@@ -8,10 +8,10 @@ ARCH="${1:-}"
 shift || true
 VARIANTS=("$@")
 
-case "$ARCH" in
+  case "$ARCH" in
   amd64|x86_64)
     IMAGE="${JHDF5_MANYLINUX_IMAGE_X86_64:-quay.io/pypa/manylinux2014_x86_64:latest}"
-    DEFAULT_VARIANTS=("generic" "avx2")
+    DEFAULT_VARIANTS=("generic" "avx2" "avx512")
     ;;
   arm64|aarch64)
     IMAGE="${JHDF5_MANYLINUX_IMAGE_AARCH64:-quay.io/pypa/manylinux2014_aarch64:latest}"

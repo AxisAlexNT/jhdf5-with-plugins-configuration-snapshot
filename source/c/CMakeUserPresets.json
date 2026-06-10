@@ -151,10 +151,16 @@
       "generator": "Unix Makefiles",
       "inherits": [
         "ci-StdShar-Clang"
-      ],
-      "cacheVariables": {
-        "HAVE_FDOPEN": "1"
-      }
+      ]
+    },
+    {
+      "name": "hict-StdShar-Clang-noexamples",
+      "hidden": true,
+      "generator": "Unix Makefiles",
+      "inherits": [
+        "ci-StdShar-Clang",
+        "hict-StdShar-noexamples"
+      ]
     }
   ],
   "buildPresets": [
@@ -189,6 +195,15 @@
       "name": "hict-StdShar-Clang",
       "description": "Clang Standard Build for macOS (Release) for HiCT version of jHDF5 with plugins",
       "configurePreset": "hict-StdShar-Clang",
+      "verbose": false,
+      "inherits": [
+        "ci-StdShar-Clang"
+      ]
+    },
+    {
+      "name": "hict-StdShar-Clang-noexamples",
+      "description": "Clang Standard Build for macOS (Release) for HiCT jHDF5 with plugins and no examples",
+      "configurePreset": "hict-StdShar-Clang-noexamples",
       "verbose": false,
       "inherits": [
         "ci-StdShar-Clang"
@@ -304,6 +319,13 @@
         {"type": "configure", "name": "hict-StdShar-Clang"},
         {"type": "build", "name": "hict-StdShar-Clang"},
         {"type": "package", "name": "hict-StdShar-Clang"}
+      ]
+    },
+    {
+      "name": "hict-StdShar-Clang-notest-noexamples",
+      "steps": [
+        {"type": "configure", "name": "hict-StdShar-Clang-noexamples"},
+        {"type": "build", "name": "hict-StdShar-Clang-noexamples"}
       ]
     }
   ]
