@@ -60,7 +60,7 @@ docker run --rm -i \
 
     yum install -y \
       autoconf automake binutils bzip2 bzip2-devel ca-certificates curl diffutils file findutils \
-      gcc gcc-c++ gzip libtool m4 make patch perl-core perl-IPC-Cmd pkgconfig \
+      gcc gcc-c++ gcc-gfortran gzip libtool m4 make patch perl-core perl-IPC-Cmd pkgconfig \
       tar unzip which xz xz-devel zip zlib-devel
 
     find_manylinux_python() {
@@ -92,7 +92,7 @@ docker run --rm -i \
     python3 -m pip install --upgrade pip >/dev/null
     python3 -m pip install --upgrade "cmake==${CMAKE_VERSION}" ninja >/dev/null
 
-    export PATH="/usr/local/bin:${PATH}"
+    export PATH="$(dirname "${PYBIN}"):/usr/local/bin:${PATH}"
     python3 --version
     gcc --version | head -n 1
     g++ --version | head -n 1

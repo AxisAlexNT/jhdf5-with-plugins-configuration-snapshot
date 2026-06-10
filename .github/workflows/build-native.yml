@@ -107,6 +107,18 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
+      - name: Install CMake and Fortran toolchain
+        run: |
+          brew update
+          brew install cmake@3.29 gcc
+          echo "$(brew --prefix cmake@3.29)/bin" >> "$GITHUB_PATH"
+          echo "$(brew --prefix gcc)/bin" >> "$GITHUB_PATH"
+          gfortran_path="$(command -v gfortran || command -v gfortran-14 || true)"
+          if [[ -z "${gfortran_path}" ]]; then
+            echo "::error::gfortran was not found after installing gcc." >&2
+            exit 1
+          fi
+          echo "FC=${gfortran_path}" >> "$GITHUB_ENV"
       - name: Download HDF5 CMake archive
         working-directory: source/c
         run: curl -L --retry 5 --fail -o "${HDF5_CMAKE_ARCHIVE_NAME}" "${HDF5_CMAKE_ARCHIVE_URL}"
@@ -135,6 +147,18 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
+      - name: Install CMake and Fortran toolchain
+        run: |
+          brew update
+          brew install cmake@3.29 gcc
+          echo "$(brew --prefix cmake@3.29)/bin" >> "$GITHUB_PATH"
+          echo "$(brew --prefix gcc)/bin" >> "$GITHUB_PATH"
+          gfortran_path="$(command -v gfortran || command -v gfortran-14 || true)"
+          if [[ -z "${gfortran_path}" ]]; then
+            echo "::error::gfortran was not found after installing gcc." >&2
+            exit 1
+          fi
+          echo "FC=${gfortran_path}" >> "$GITHUB_ENV"
       - name: Download HDF5 CMake archive
         working-directory: source/c
         run: curl -L --retry 5 --fail -o "${HDF5_CMAKE_ARCHIVE_NAME}" "${HDF5_CMAKE_ARCHIVE_URL}"
