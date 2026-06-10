@@ -18,6 +18,38 @@ if (-not (Test-Path $archive)) {
 
 $initialCl = $env:CL
 
+function Import-DeveloperCommandPromptEnvironment {
+  $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+  if (-not (Test-Path $vswhere)) {
+    throw "vswhere.exe was not found. Visual Studio Build Tools are required for the Windows JHDF5 build."
+  }
+
+  $vsPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+  if (-not $vsPath) {
+    throw "No Visual Studio installation with MSVC x64 tools was found."
+  }
+
+  $vcvars = Join-Path $vsPath "VC\Auxiliary\Build\vcvars64.bat"
+  if (-not (Test-Path $vcvars)) {
+    throw "vcvars64.bat was not found at $vcvars."
+  }
+
+  $env:VSCMD_SKIP_SENDTELEMETRY = "1"
+  $envDump = cmd.exe /s /c "`"$vcvars`" >nul && set"
+  if ($LASTEXITCODE -ne 0) {
+    throw "vcvars64.bat failed with exit code $LASTEXITCODE."
+  }
+
+  foreach ($line in ($envDump -split "`r?`n")) {
+    if ($line -match "^[A-Za-z0-9_]+=") {
+      $name, $value = $line.Split("=", 2)
+      Set-Item -Path "Env:$name" -Value $value
+    }
+  }
+}
+
+Import-DeveloperCommandPromptEnvironment
+
 function Invoke-NativeTool {
   param([string] $Command, [string[]] $Arguments)
   & $Command @Arguments

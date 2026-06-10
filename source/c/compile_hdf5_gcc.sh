@@ -20,7 +20,10 @@ BUILD_HDF5_PLUGINS=""
 CMAKE_HDF5="1"
 HDF5_CLEAN="1"
 if [ -z "${CMAKE_PRESET+x}" ]; then
-	CMAKE_PRESET="hict-StdShar-GNUC-notest"
+	case "$(uname -s)" in
+		Darwin) CMAKE_PRESET="ci-StdShar-Clang" ;;
+		*) CMAKE_PRESET="hict-StdShar-GNUC-notest-noexamples" ;;
+	esac
 fi
 HDF5_USE_AUTOTOOLS=""
 
