@@ -73,8 +73,9 @@ cd "$BUILDDIR"
 cp "$SRCDIR/src/H5win32defs.h" "$BUILDDIR/jni/"
 cp "$SRCDIR/src/H5private.h" "$BUILDDIR/jni/"
 
-PDIR="$BUILDDIR/hdf5-$VERSION/build110/hict-StdShar-GNUC/_CPack_Packages/Linux/TGZ/HDF5-1.10.11-Linux/HDF_Group/HDF5/1.10.11/"
-BDIR="$BUILDDIR/hdf5-$VERSION/build110/hict-StdShar-GNUC/"
+HDF5_CMAKE_PRESET="${CMAKE_PRESET:-hict-StdShar-GNUC-noexamples}"
+PDIR="$BUILDDIR/hdf5-$VERSION/build110/$HDF5_CMAKE_PRESET/_CPack_Packages/Linux/TGZ/HDF5-1.10.11-Linux/HDF_Group/HDF5/1.10.11/"
+BDIR="$BUILDDIR/hdf5-$VERSION/build110/$HDF5_CMAKE_PRESET/"
 HDF5_PUBLIC_INCLUDE="$PDIR/include"
 if [[ ! -d "$HDF5_PUBLIC_INCLUDE" ]]; then
 	HDF5_PUBLIC_INCLUDE="$BDIR/src"
@@ -82,9 +83,14 @@ if [[ ! -d "$HDF5_PUBLIC_INCLUDE" ]]; then
 fi
 
 STATIC_LIBS=()
-while IFS= read -r lib_path; do
-	STATIC_LIBS+=("$lib_path")
-done < <(find "$BDIR" -type f -name "*.a" -print)
+if [[ -d "$BDIR" ]]; then
+	while IFS= read -r lib_path; do
+		STATIC_LIBS+=("$lib_path")
+	done < <(find "$BDIR" -type f -name "*.a" -print)
+else
+	echo "::error file=${SCRIPT_PATH}/compile_linux_arm64.sh,line=80::Expected HDF5 build directory was not found: ${BDIR}"
+	exit 1
+fi
 
 rm -rf jhdf5*.std*.log jhdf5*.so
 echo "JHDF5 building..."

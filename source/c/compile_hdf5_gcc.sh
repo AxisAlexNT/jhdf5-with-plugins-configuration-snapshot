@@ -35,7 +35,7 @@ if [ -z ${REPLACE_JNI+x} ]; then
  	echo "REPLACE_JNI variable is provided and is set to $REPLACE_JNI"
  fi
 
-export PATH="/opt/cmake/bin:/opt/cmake:$PATH"
+export CMAKE_POLICY_VERSION_MINIMUM="${CMAKE_POLICY_VERSION_MINIMUM:-3.5}"
 
 
 if [ "$PLATFORM" != "i386" -a "$PLATFORM" != "x86" -a "$PLATFORM" != "amd64" -a "$PLATFORM" != "x86_64" -a "$PLATFORM" != "armv6l" -a "$PLATFORM" != "aarch64" ]; then

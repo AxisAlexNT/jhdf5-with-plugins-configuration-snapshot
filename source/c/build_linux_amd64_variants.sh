@@ -32,6 +32,7 @@ build_variant() {
   local output_variant="$variant"
   local cflags
   local jhdf5_flags
+  local cmake_preset="${CMAKE_PRESET:-hict-StdShar-GNUC-noexamples}"
 
   case "$variant" in
     generic)
@@ -59,8 +60,9 @@ build_variant() {
   echo "[jhdf5] Building Linux amd64 $output_variant variant"
   (
     cd "$SCRIPT_PATH"
-    POSTFIX="$output_variant" CFLAGS="$cflags" ./compile_hdf5_gcc.sh amd64 ""
+    CMAKE_PRESET="$cmake_preset" POSTFIX="$output_variant" CFLAGS="$cflags" ./compile_hdf5_gcc.sh amd64 ""
     POSTFIX="$output_variant" \
+      CMAKE_PRESET="$cmake_preset" \
       CFLAGS="$cflags" \
       JHDF5_ADDITIONAL_GCC_FLAGS="$jhdf5_flags" \
       JHDF5_DEPLOY_DIR="$REPO_ROOT/libs/native/jhdf5/amd64-Linux-$output_variant" \
