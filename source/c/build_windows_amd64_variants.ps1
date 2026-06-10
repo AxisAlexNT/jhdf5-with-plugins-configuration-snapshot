@@ -82,6 +82,58 @@ function Normalize-CMakePreset {
   return $normalized
 }
 
+function Get-AvailableWorkflowPresets {
+  param([string] $SourceDir)
+
+  $output = & cmake -S "$SourceDir" --list-presets 2>&1
+  $inWorkflow = $false
+  $presets = New-Object System.Collections.Generic.HashSet[string]
+
+  foreach ($line in ($output -split "`r?`n")) {
+    if ($line -match '^Available workflow presets:') {
+      $inWorkflow = $true
+      continue
+    }
+    if ($inWorkflow) {
+      if ($line -match '^  "([^"]+)"') {
+        [void]$presets.Add($Matches[1])
+      } elseif ($line -match '^\S') {
+        break
+      }
+    }
+  }
+
+  return $presets
+}
+
+function Resolve-CMakeWorkflowPreset {
+  param([string] $Preset, [string] $SourceDir)
+
+  $candidatePresets = @(
+    $Preset,
+    ($Preset -replace '^hict-', 'ci-'),
+    ($Preset -replace '^ci-', 'hict-'),
+    ($Preset -replace '-notest-noexamples', ''),
+    ($Preset -replace '-notest', ''),
+    ($Preset -replace '-noexamples', '')
+  )
+  $candidatePresets = $candidatePresets | Where-Object { $_ } | Select-Object -Unique
+
+  $available = Get-AvailableWorkflowPresets -SourceDir $SourceDir
+  foreach ($candidate in $candidatePresets) {
+    $candidate = Normalize-CMakePreset -Preset $candidate
+    if ($available.Contains($candidate)) {
+      return $candidate
+    }
+  }
+
+  Write-Error "Could not resolve workflow preset '$Preset'. Available workflow presets:"
+  foreach ($name in $available) {
+    Write-Error "  $name"
+  }
+  throw "No compatible workflow preset found for '$Preset'"
+}
+
 function Resolve-TestBuildPreset {
   param([string] $Preset)
 
@@ -99,10 +151,10 @@ foreach ($variant in $Variants) {
   }
 
 	$env:POSTFIX = $outputVariant
-	$requestedPreset = if ($env:CMAKE_PRESET) { $env:CMAKE_PRESET } else { "hict-StdShar-MSVC-notest" }
-$requestedPreset = $requestedPreset -replace '^hict-', 'ci-'
-	$requestedPreset = Normalize-CMakePreset -Preset $requestedPreset
-	$env:CMAKE_PRESET = $requestedPreset
+	$requestedPreset = if ($env:CMAKE_PRESET) { $env:CMAKE_PRESET } else { "hict-StdShar-MSVC" }
+  $requestedPreset = Normalize-CMakePreset -Preset $requestedPreset
+  $sourceDir = Join-Path $PSScriptRoot "build\CMake-hdf5-1.10.11-$outputVariant\hdf5-1.10.11"
+	$env:CMAKE_PRESET = Resolve-CMakeWorkflowPreset -Preset $requestedPreset -SourceDir $sourceDir
   switch ($variant) {
     "generic" { $env:CL = "/O2 /GL $initialCl" }
     "avx2" { $env:CL = "/O2 /arch:AVX2 /GL $initialCl" }
@@ -113,7 +165,6 @@ $requestedPreset = $requestedPreset -replace '^hict-', 'ci-'
   Write-Host "[jhdf5] Preparing Windows amd64 $outputVariant variant"
   bash (Join-Path $PSScriptRoot "prepare_winbuild.sh")
 
-  $sourceDir = Join-Path $PSScriptRoot "build\CMake-hdf5-1.10.11-$outputVariant\hdf5-1.10.11"
   if (-not (Test-Path $sourceDir)) {
     throw "Prepared HDF5 source directory was not found: $sourceDir"
   }

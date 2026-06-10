@@ -53,7 +53,7 @@ jobs:
         working-directory: source/c
         continue-on-error: true
         run: |
-          TEST_DIR="$(find . -type d -path '*/hdf5-1.10.11/build110/hict-StdShar-GNUC*' -o -path '*/hdf5-1.10.11/build110/ci-StdShar-GNUC*' | sort | head -n 1)"
+          TEST_DIR="$(find . -type d \( -path '*/hdf5-1.10.11*/build110/hict-StdShar-GNUC*' -o -path '*/hdf5-1.10.11*/build110/ci-StdShar-GNUC*' \) | sort | head -n 1)"
           if [[ -z "${TEST_DIR}" ]]; then
             echo "::warning::Linux amd64 HDF5 test directory was not found; skipping tests."
             exit 0
@@ -94,7 +94,7 @@ jobs:
         working-directory: source/c
         continue-on-error: true
         run: |
-          TEST_DIR="$(find . -type d -path '*/hdf5-1.10.11/build110/hict-StdShar-GNUC*' -o -path '*/hdf5-1.10.11/build110/ci-StdShar-GNUC*' | sort | head -n 1)"
+          TEST_DIR="$(find . -type d \( -path '*/hdf5-1.10.11*/build110/hict-StdShar-GNUC*' -o -path '*/hdf5-1.10.11*/build110/ci-StdShar-GNUC*' \) | sort | head -n 1)"
           if [[ -z "${TEST_DIR}" ]]; then
             echo "::warning::Linux arm64 HDF5 test directory was not found; skipping tests."
             exit 0
@@ -206,7 +206,7 @@ jobs:
         working-directory: source/c
         continue-on-error: true
         run: |
-          TEST_DIR="$(find . -type d -path '*/hdf5-1.10.11/build110/hict-StdShar-Clang*' -o -path '*/hdf5-1.10.11/build110/ci-StdShar-Clang*' | sort | head -n 1)"
+          TEST_DIR="$(find . -type d \( -path '*/hdf5-1.10.11*/build110/hict-StdShar-Clang*' -o -path '*/hdf5-1.10.11*/build110/ci-StdShar-Clang*' \) | sort | head -n 1)"
           if [[ -z "${TEST_DIR}" ]]; then
             echo "::warning::macOS arm64 HDF5 test directory was not found; skipping tests."
             exit 0
@@ -261,7 +261,7 @@ jobs:
         working-directory: source/c
         continue-on-error: true
         run: |
-          TEST_DIR="$(find . -type d -path '*/hdf5-1.10.11/build110/hict-StdShar-Clang*' -o -path '*/hdf5-1.10.11/build110/ci-StdShar-Clang*' | sort | head -n 1)"
+          TEST_DIR="$(find . -type d \( -path '*/hdf5-1.10.11*/build110/hict-StdShar-Clang*' -o -path '*/hdf5-1.10.11*/build110/ci-StdShar-Clang*' \) | sort | head -n 1)"
           if [[ -z "${TEST_DIR}" ]]; then
             echo "::warning::macOS x86_64 HDF5 test directory was not found; skipping tests."
             exit 0
@@ -409,9 +409,9 @@ jobs:
           jar tf "${jar_path}" | grep -q '^native/jhdf5/amd64-Windows/jhdf5.dll$'
           jar tf "${jar_path}" | grep -q '^native/jhdf5/aarch64-Mac OS X/libjhdf5.jnilib$'
           jar tf "${jar_path}" | grep -q '^native/jhdf5/x86_64-Mac OS X/libjhdf5.jnilib$'
-          jar tf "${jar_path}" | grep -Eq '^resources/libs/osx_arm64/libhdf5\.dylib$|^resources/libs/macos_arm64/libhdf5\.dylib$'
+          jar tf "${jar_path}" | grep -Eq '^resources/libs/osx_arm64/libhdf5\.dylib$|^resources/libs/macos_arm64/libhdf5\.dylib$|^resources/libs/darwin_arm64/libhdf5\.dylib$'
           jar tf "${jar_path}" | grep -Eq '^resources/libs/osx_64/libhdf5\.dylib$|^resources/libs/macos_64/libhdf5\.dylib$|^resources/libs/darwin_x86_64/libhdf5\.dylib$'
-          jar tf "${jar_path}" | grep -Eq '^resources/libs/osx_arm64/libh5bshuf\.dylib$|^resources/libs/macos_arm64/libh5bshuf\.dylib$'
+          jar tf "${jar_path}" | grep -Eq '^resources/libs/osx_arm64/libh5bshuf\.dylib$|^resources/libs/macos_arm64/libh5bshuf\.dylib$|^resources/libs/darwin_arm64/libh5bshuf\.dylib$'
           jar tf "${jar_path}" | grep -Eq '^resources/libs/osx_64/libh5bshuf\.dylib$|^resources/libs/macos_64/libh5bshuf\.dylib$|^resources/libs/darwin_x86_64/libh5bshuf\.dylib$'
       - name: Publish jar to GitHub Release
         if: ${{ github.event_name == 'release' }}

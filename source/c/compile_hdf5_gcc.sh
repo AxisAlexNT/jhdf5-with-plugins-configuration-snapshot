@@ -22,22 +22,71 @@ CMAKE_HDF5="1"
 HDF5_CLEAN="1"
 if [ -z "${CMAKE_PRESET+x}" ]; then
 	case "$(uname -s)" in
-		Darwin) CMAKE_PRESET="ci-StdShar-Clang-notest-noexamples" ;;
-		*) CMAKE_PRESET="hict-StdShar-GNUC-notest-noexamples" ;;
+		Darwin) CMAKE_PRESET="hict-StdShar-Clang-noexamples" ;;
+		*) CMAKE_PRESET="hict-StdShar-GNUC-noexamples" ;;
 	esac
 fi
 
 normalize_preset() {
 	local preset="$1"
-	if [[ "$preset" == hict-* ]]; then
-		preset="${preset/#hict-/ci-}"
-	fi
 	preset="${preset%%-}"
+	while [[ "$preset" == *-notest-noexamples ]]; do
+		preset="${preset/-notest-noexamples/}"
+	done
+	while [[ "$preset" == *-notest ]]; do
+		preset="${preset/-notest/}"
+	done
+	while [[ "$preset" == *-noexamples ]]; do
+		preset="${preset/-noexamples/}"
+	done
 	echo "$preset"
 }
 
 CMAKE_PRESET="$(normalize_preset "${CMAKE_PRESET}")"
 HDF5_USE_AUTOTOOLS=""
+
+resolve_workflow_preset() {
+	local requested="$1"
+	local source_dir="$2"
+	mapfile -t available_presets < <(
+		cmake -S "$source_dir" --list-presets 2>/dev/null | \
+		awk '
+			/^Available workflow presets:/{in_workflow=1; next}
+			in_workflow && /^  "/ {
+				gsub(/^  "/, "", $0);
+				gsub(/"$/, "", $0);
+				print $0
+			}
+			in_workflow && /^[^ "]/ {in_workflow=0}
+		'
+	)
+
+	local candidates=(
+		"$requested"
+		"${requested/#hict-/ci-}"
+		"${requested/#ci-/hict-}"
+		"${requested/-notest-noexamples/}"
+		"${requested/-notest/}"
+		"${requested/-noexamples/}"
+	)
+	local candidate
+	local available
+	for candidate in "${candidates[@]}"; do
+		candidate="$(normalize_preset "$candidate")"
+		[[ -z "$candidate" ]] && continue
+		for available in "${available_presets[@]}"; do
+			if [[ "$candidate" == "$available" ]]; then
+				echo "$candidate"
+				return 0
+			fi
+		done
+	done
+
+	echo "Could not resolve workflow preset '$requested' to any available workflow preset." >&2
+	echo "Available workflow presets:" >&2
+	printf '  %s\n' "${available_presets[@]}" >&2
+	return 1
+}
 
 # Should java/src/jni folder be overwritten by JHDF5 patches?
 if [ -z ${REPLACE_JNI+x} ]; then  
@@ -242,6 +291,7 @@ if [[ ! -z $CMAKE_HDF5 ]]; then
 		echo "Not applying JNI patch as set by parameters in script"
 	fi
 	rm -f cmake.std*.log
+	CMAKE_PRESET="$(resolve_workflow_preset "$CMAKE_PRESET" "$SRCDIR")"
 	cmake_args=(--workflow --preset="$CMAKE_PRESET" --fresh)
 	cmake "${cmake_args[@]}" > >(tee -a cmake.stdout.log) 2> >(tee -a cmake.stderr.log >&2)
 	cd ..

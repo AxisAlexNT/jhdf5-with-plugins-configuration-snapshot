@@ -44,11 +44,15 @@ function Resolve-TestBuildDirectory {
   }
 
   $buildRoot = Join-Path $BuildRoot "CMake-hdf5-1.10.11-${outputVariant}\hdf5-1.10.11"
-  $candidates = @(
+  $candidatePresets = @(
     "hict-StdShar-MSVC",
-    "ci-StdShar-MSVC"
+    "ci-StdShar-MSVC",
+    "hict-StdShar-MSVC-noexamples",
+    "ci-StdShar-MSVC-noexamples",
+    "hict-StdShar-MSVC-notest",
+    "ci-StdShar-MSVC-notest"
   )
-  foreach ($candidate in $candidates) {
+  foreach ($candidate in $candidatePresets) {
     $testDir = Join-Path $buildRoot "build110\${candidate}"
     if (Test-Path $testDir) {
       return $testDir

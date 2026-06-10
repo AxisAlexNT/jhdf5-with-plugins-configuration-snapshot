@@ -52,7 +52,7 @@ build_variant() {
   local output_variant="$variant"
   local cflags
   local jhdf5_flags
-  local cmake_preset="${CMAKE_PRESET:-hict-StdShar-GNUC-notest-noexamples}"
+  local cmake_preset="${CMAKE_PRESET:-hict-StdShar-GNUC-noexamples}"
 
   case "$variant" in
     generic)

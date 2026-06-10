@@ -64,6 +64,19 @@ jar {
         include("**/*.so")
         rename { it.replace(".so", ".dylib") }
     }
+    from("libs/native/jhdf5/x86_64-Mac OS X") {
+        into("resources/libs/darwin_x86_64")
+        include("**/*.dylib", "**/*.jnilib")
+    }
+    from("libs/native/jhdf5/x86_64-Mac OS X") {
+        into("resources/libs/darwin_x86_64")
+        include("**/*.so")
+        rename { it.replace(".so", ".dylib") }
+    }
+    from("libs/native/jhdf5/aarch64-Mac OS X") {
+        into("resources/libs/darwin_arm64")
+        include("**/*.dylib", "**/*.jnilib")
+    }
     from("libs/native/jhdf5/aarch64-Mac OS X") {
         into("resources/libs/osx_arm64")
         include("**/*.dylib", "**/*.jnilib")
