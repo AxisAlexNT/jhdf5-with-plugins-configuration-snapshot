@@ -156,10 +156,36 @@
     },
     {
       "name": "hict-StdShar-Clang-noexamples",
-      "hidden": true,
       "generator": "Unix Makefiles",
       "inherits": [
         "ci-StdShar-Clang",
+        "hict-StdShar-noexamples"
+      ]
+    },
+    {
+      "name": "hict-StdShar-MSVC-noexamples",
+      "generator": "Unix Makefiles",
+      "inherits": [
+        "ci-x64-Release-MSVC",
+        "ci-Java",
+        "hict-StdShar-noexamples"
+      ]
+    },
+    {
+      "name": "hict-StdShar-MSVC-notest",
+      "generator": "Unix Makefiles",
+      "inherits": [
+        "ci-x64-Release-MSVC",
+        "ci-Java",
+        "hict-StdShar"
+      ]
+    },
+    {
+      "name": "hict-StdShar-MSVC-notest-noexamples",
+      "generator": "Unix Makefiles",
+      "inherits": [
+        "ci-x64-Release-MSVC",
+        "ci-Java",
         "hict-StdShar-noexamples"
       ]
     }
@@ -193,6 +219,33 @@
       ]
     },
     {
+      "name": "hict-StdShar-MSVC-noexamples",
+      "description": "MSVC Standard Build for x64 (Release) for HiCT version of jHDF5 with plugins and no examples package",
+      "configurePreset": "hict-StdShar-MSVC-noexamples",
+      "verbose": false,
+      "inherits": [
+        "ci-x64-Release-MSVC"
+      ]
+    },
+    {
+      "name": "hict-StdShar-MSVC-notest",
+      "description": "MSVC Standard Build for x64 (Release) for HiCT version of jHDF5 with plugins",
+      "configurePreset": "hict-StdShar-MSVC-notest",
+      "verbose": false,
+      "inherits": [
+        "ci-x64-Release-MSVC"
+      ]
+    },
+    {
+      "name": "hict-StdShar-MSVC-notest-noexamples",
+      "description": "MSVC Standard Build for x64 (Release) for HiCT version of jHDF5 with plugins and no examples",
+      "configurePreset": "hict-StdShar-MSVC-notest-noexamples",
+      "verbose": false,
+      "inherits": [
+        "ci-x64-Release-MSVC"
+      ]
+    },
+    {
       "name": "hict-StdShar-Clang",
       "description": "Clang Standard Build for macOS (Release) for HiCT version of jHDF5 with plugins",
       "configurePreset": "hict-StdShar-Clang",
@@ -203,6 +256,15 @@
     },
     {
       "name": "hict-StdShar-Clang-noexamples",
+      "description": "Clang Standard Build for macOS (Release) for HiCT jHDF5 with plugins and no examples",
+      "configurePreset": "hict-StdShar-Clang-noexamples",
+      "verbose": false,
+      "inherits": [
+        "ci-StdShar-Clang"
+      ]
+    },
+    {
+      "name": "hict-StdShar-Clang-notest-noexamples",
       "description": "Clang Standard Build for macOS (Release) for HiCT jHDF5 with plugins and no examples",
       "configurePreset": "hict-StdShar-Clang-noexamples",
       "verbose": false,
@@ -264,6 +326,33 @@
       }
     },
     {
+      "name": "hict-StdShar-MSVC-noexamples",
+      "configurePreset": "hict-StdShar-MSVC-noexamples",
+      "inherits": "ci-x64-Release-MSVC",
+      "output": {
+        "debug":false,
+        "verbose": false
+      }
+    },
+    {
+      "name": "hict-StdShar-MSVC-notest",
+      "configurePreset": "hict-StdShar-MSVC-notest",
+      "inherits": "ci-x64-Release-MSVC",
+      "output": {
+        "debug":false,
+        "verbose": false
+      }
+    },
+    {
+      "name": "hict-StdShar-MSVC-notest-noexamples",
+      "configurePreset": "hict-StdShar-MSVC-notest-noexamples",
+      "inherits": "ci-x64-Release-MSVC",
+      "output": {
+        "debug":false,
+        "verbose": false
+      }
+    },
+    {
       "name": "hict-StdShar-Clang",
       "configurePreset": "hict-StdShar-Clang",
       "inherits": "ci-StdShar-Clang",
@@ -312,6 +401,14 @@
         {"type": "configure", "name": "hict-StdShar-GNUC-noexamples"},
         {"type": "build", "name": "hict-StdShar-GNUC-noexamples"},
         {"type": "package", "name": "hict-StdShar-GNUC-noexamples"}
+      ]
+    },
+    {
+      "name": "hict-StdShar-MSVC-notest-noexamples",
+      "steps": [
+        {"type": "configure", "name": "hict-StdShar-MSVC-noexamples"},
+        {"type": "build", "name": "hict-StdShar-MSVC-noexamples"},
+        {"type": "package", "name": "hict-StdShar-MSVC-noexamples"}
       ]
     },
     {
