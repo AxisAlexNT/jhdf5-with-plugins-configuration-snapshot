@@ -22,7 +22,7 @@ CMAKE_HDF5="1"
 HDF5_CLEAN="1"
 if [ -z "${CMAKE_PRESET+x}" ]; then
 	case "$(uname -s)" in
-		Darwin) CMAKE_PRESET="hict-StdShar-Clang-notest" ;;
+		Darwin) CMAKE_PRESET="hict-StdShar-Clang-noexamples" ;;
 		*) CMAKE_PRESET="hict-StdShar-GNUC-notest-noexamples" ;;
 	esac
 fi
@@ -100,18 +100,28 @@ resolve_workflow_preset() {
 
 	if [[ -n "$fallback" ]]; then
 		echo "Could not validate CMake preset '$requested' against discovered presets; attempting compatibility fallback." >&2
-		local fallback_compat=("${requested/-notest-noexamples/}" "${requested/-notest/}" "${requested/-noexamples/}" "${requested}")
+		local fallback_compat=(
+			"${requested}"
+			"${requested/-notest-noexamples/}"
+			"${requested/-notest/}"
+			"${requested/-noexamples/}"
+			"${requested/-notest-noexamples/-noexamples}"
+			"${requested/-notest-noexamples/-notest}"
+			"${requested/^hict-/ci-}"
+			"${requested/^ci-/hict-}"
+		)
 		for candidate in "${fallback_compat[@]}"; do
 			candidate="$(normalize_preset "$candidate")"
 			[[ -z "$candidate" ]] && continue
 			while IFS= read -r line; do
 				if [[ "$candidate" == "$line" ]]; then
+					echo "Using compatible fallback preset '$candidate'." >&2
 					echo "$candidate"
 					return 0
 				fi
 			done <<<"${available_presets}"
 		done
-		echo "$fallback"
+		echo "$fallback" >&2
 		return 0
 	fi
 
@@ -302,17 +312,19 @@ if [[ ! -z $CMAKE_HDF5 ]]; then
 		cp -arf ../*.c $SRCDIR/java/src/jni/
 	fi
 	cp -af ../*tar.gz "$SRCDIR/../"
-	if [[ ! -f "$SRCDIR/../hdf5_plugins.tar.gz" ]]; then
-		PLUGIN_TMPDIR="$(mktemp -d)"
-		if [[ -f "../hdf5_plugins-release-1_10_11.zip" ]]; then
-			unzip -q "../hdf5_plugins-release-1_10_11.zip" -d "$PLUGIN_TMPDIR"
-			tar -C "$PLUGIN_TMPDIR" -czf "$SRCDIR/../hdf5_plugins.tar.gz" hdf5_plugins-release-1_10_11
-		elif [[ -f "$SRCDIR/../hdf5_plugins-master.zip" ]]; then
-			unzip -q "$SRCDIR/../hdf5_plugins-master.zip" -d "$PLUGIN_TMPDIR"
-			tar -C "$PLUGIN_TMPDIR" -czf "$SRCDIR/../hdf5_plugins.tar.gz" hdf5_plugins-master
-		fi
+	PLUGIN_TMPDIR="$(mktemp -d)"
+	if [[ -f "../hdf5_plugins-release-1_10_11.zip" ]]; then
+		unzip -q "../hdf5_plugins-release-1_10_11.zip" -d "$PLUGIN_TMPDIR"
+		tar -C "$PLUGIN_TMPDIR" -czf "$SRCDIR/../hdf5_plugins.tar.gz" hdf5_plugins-release-1_10_11
+	elif [[ -f "$SRCDIR/../hdf5_plugins-master.zip" ]]; then
+		unzip -q "$SRCDIR/../hdf5_plugins-master.zip" -d "$PLUGIN_TMPDIR"
+		tar -C "$PLUGIN_TMPDIR" -czf "$SRCDIR/../hdf5_plugins.tar.gz" hdf5_plugins-master
+	else
 		rm -rf "$PLUGIN_TMPDIR"
+		echo "::error::No HDF5 plugin source archive was found." >&2
+		exit 1
 	fi
+	rm -rf "$PLUGIN_TMPDIR"
 	echo "HDF5 Source DIR is $SRCDIR"
 	cd $SRCDIR
 	echo "Available CMake presets:"

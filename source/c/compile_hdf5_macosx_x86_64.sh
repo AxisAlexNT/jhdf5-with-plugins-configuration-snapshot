@@ -8,7 +8,7 @@ normalize_preset() {
 }
 
 if [ -z "${CMAKE_PRESET+x}" ]; then
-  CMAKE_PRESET="hict-StdShar-Clang-notest"
+  CMAKE_PRESET="hict-StdShar-Clang-noexamples"
 fi
 CMAKE_PRESET="$(normalize_preset)"
 export CMAKE_PRESET

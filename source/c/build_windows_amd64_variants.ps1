@@ -17,8 +17,6 @@ if (-not (Test-Path $archive)) {
   throw "Missing $archive. Download the official HDF5 CMake archive from https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.11/src/CMake-hdf5-1.10.11.zip"
 }
 
-$initialCl = $env:CL
-
 function Import-DeveloperCommandPromptEnvironment {
   $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
   if (-not (Test-Path $vswhere)) {
@@ -57,6 +55,26 @@ function Invoke-NativeTool {
   if ($LASTEXITCODE -ne 0) {
     throw "$Command $($Arguments -join ' ') failed with exit code $LASTEXITCODE"
   }
+}
+
+function Set-CompilerFlags {
+  param([string] $Variant)
+
+  $baseFlags = "/O2 /GL"
+  $variantFlags = switch ($Variant) {
+    "generic" { "/O2 /GL" }
+    "avx2" { "/O2 /arch:AVX2 /GL" }
+    "baseline" { "/O2 /arch:AVX2 /GL" }
+    "avx512" { "/O2 /arch:AVX512 /GL" }
+    default { $baseFlags }
+  }
+  $env:CL = $variantFlags
+
+  $env:LDFLAGS = ""
+  $env:LINKFLAGS = ""
+  $env:LINK = ""
+  $env:CFLAGS = ""
+  $env:CXXFLAGS = ""
 }
 
 function Run-Hdf5TestSuite {
@@ -162,19 +180,35 @@ function Resolve-CMakePreset {
   }
 
   if ($candidatePresets.Length -gt 0) {
-    $fallbackCandidates = @(
+    $checked = New-Object System.Collections.Generic.HashSet[string]
+    foreach ($candidate in $candidatePresets) {
+      $candidate = Normalize-CMakePreset -Preset $candidate
+      if ([string]::IsNullOrWhiteSpace($candidate)) { continue }
+      if ($checked.Add($candidate) -and $availablePresets.Contains($candidate)) {
+        return $candidate
+      }
+    }
+
+    $compatCandidates = @(
       ($Preset -replace '-notest-noexamples', ''),
       ($Preset -replace '-notest', ''),
       ($Preset -replace '-noexamples', ''),
-      $Preset
+      ($Preset -replace '^hict-', 'ci-'),
+      ($Preset -replace '^ci-', 'hict-')
     )
-    $fallbackCandidates = $fallbackCandidates | Where-Object { $_ } | Select-Object -Unique
-    foreach ($candidate in $fallbackCandidates) {
+    $compatCandidates = $compatCandidates | Where-Object { $_ } | Select-Object -Unique
+    foreach ($candidate in $compatCandidates) {
       $candidate = Normalize-CMakePreset -Preset $candidate
-      if (-not [string]::IsNullOrWhiteSpace($candidate)) {
-        Write-Host "[jhdf5] Falling back to requested preset '$candidate' without preset-section validation."
+      if ([string]::IsNullOrWhiteSpace($candidate)) { continue }
+      if ($checked.Add($candidate) -and $availablePresets.Contains($candidate)) {
+        Write-Host "[jhdf5] Falling back to compatible preset '$candidate'."
         return $candidate
       }
+    }
+    if ($checked.Count -gt 0) {
+      $fallback = $checked | Select-Object -First 1
+      Write-Host "[jhdf5] Falling back to requested preset '$fallback' without preset-section validation."
+      return $fallback
     }
   }
 
@@ -223,16 +257,11 @@ foreach ($variant in $Variants) {
 
 	$env:POSTFIX = $outputVariant
   # Prefer a preset guaranteed to exist in the CMake presets shipped with this repo.
-  $requestedPreset = if ($env:CMAKE_PRESET) { $env:CMAKE_PRESET } else { "hict-StdShar-MSVC-notest" }
+  $requestedPreset = if ($env:CMAKE_PRESET) { $env:CMAKE_PRESET } else { "hict-StdShar-MSVC" }
   $requestedPreset = Normalize-CMakePreset -Preset $requestedPreset
   $sourceDir = Join-Path $PSScriptRoot "build\CMake-hdf5-1.10.11-$outputVariant\hdf5-1.10.11"
 	$env:CMAKE_PRESET = Resolve-CMakeWorkflowPreset -Preset $requestedPreset -SourceDir $sourceDir
-  switch ($variant) {
-    "generic" { $env:CL = "/O2 /GL $initialCl" }
-    "avx2" { $env:CL = "/O2 /arch:AVX2 /GL $initialCl" }
-    "baseline" { $env:CL = "/O2 /arch:AVX2 /GL $initialCl" }
-    "avx512" { $env:CL = "/O2 /arch:AVX512 /GL $initialCl" }
-  }
+  Set-CompilerFlags -Variant $variant
 
   Write-Host "[jhdf5] Preparing Windows amd64 $outputVariant variant"
   bash (Join-Path $PSScriptRoot "prepare_winbuild.sh")
