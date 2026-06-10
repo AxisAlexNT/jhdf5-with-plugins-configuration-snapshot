@@ -20,7 +20,7 @@ BUILD_HDF5_PLUGINS=""
 
 CMAKE_HDF5="1"
 HDF5_CLEAN="1"
-if [ -z "${CMAKE_PRESET+x}" ]; then
+if [ -z "${CMAKE_PRESET:-}" ]; then
 	case "$(uname -s)" in
 		Darwin) CMAKE_PRESET="hict-StdShar-Clang-noexamples" ;;
 		*) CMAKE_PRESET="hict-StdShar-GNUC-notest-noexamples" ;;
@@ -121,10 +121,7 @@ resolve_workflow_preset() {
 				fi
 			done <<<"${available_presets}"
 		done
-		echo "$fallback" >&2
-		return 0
 	fi
-
 	echo "Could not resolve CMake preset '$requested' to any available preset." >&2
 	if [[ "$BUILD_WITH_WORKFLOW" -eq 1 ]]; then
 		echo "Available workflow presets:" >&2
@@ -139,6 +136,7 @@ resolve_workflow_preset() {
 		echo "  (none available or cmake --list-presets parsing failed)" >&2
 	fi
 	return 1
+
 }
 
 # Should java/src/jni folder be overwritten by JHDF5 patches?
@@ -346,7 +344,10 @@ if [[ ! -z $CMAKE_HDF5 ]]; then
 		echo "Not applying JNI patch as set by parameters in script"
 	fi
 	rm -f cmake.std*.log
-	CMAKE_PRESET="$(resolve_workflow_preset "$CMAKE_PRESET" "$SRCDIR")"
+	if ! CMAKE_PRESET="$(resolve_workflow_preset "$CMAKE_PRESET" "$SRCDIR")"; then
+		echo "Could not resolve a valid CMake preset for workflow/build selection." >&2
+		exit 1
+	fi
 	if [[ "$BUILD_WITH_WORKFLOW" -eq 1 ]]; then
 		cmake_args=(--workflow --preset="$CMAKE_PRESET" --fresh)
 		if ! cmake "${cmake_args[@]}" > >(tee -a cmake.stdout.log) 2> >(tee -a cmake.stderr.log >&2); then

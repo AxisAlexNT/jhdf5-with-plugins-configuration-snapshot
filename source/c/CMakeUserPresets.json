@@ -404,11 +404,26 @@
       ]
     },
     {
+      "name": "hict-StdShar-GNUC-noexamples",
+      "steps": [
+        {"type": "configure", "name": "hict-StdShar-GNUC-noexamples"},
+        {"type": "build", "name": "hict-StdShar-GNUC-noexamples"},
+        {"type": "package", "name": "hict-StdShar-GNUC-noexamples"}
+      ]
+    },
+    {
       "name": "hict-StdShar-MSVC-notest-noexamples",
       "steps": [
         {"type": "configure", "name": "hict-StdShar-MSVC-noexamples"},
         {"type": "build", "name": "hict-StdShar-MSVC-noexamples"},
         {"type": "package", "name": "hict-StdShar-MSVC-noexamples"}
+      ]
+    },
+    {
+      "name": "hict-StdShar-Clang-noexamples",
+      "steps": [
+        {"type": "configure", "name": "hict-StdShar-Clang-noexamples"},
+        {"type": "build", "name": "hict-StdShar-Clang-noexamples"}
       ]
     },
     {
