@@ -1,5 +1,6 @@
 #! /bin/bash
 set -euo pipefail
 
-export CMAKE_PRESET="${CMAKE_PRESET:-hict-StdShar-Clang-notest-noexamples}"
+CMAKE_PRESET="${CMAKE_PRESET:-ci-StdShar-Clang}"
+export CMAKE_PRESET
 CFLAGS='-m64 -mmacosx-version-min=10.11' ./compile_hdf5_gcc.sh x86_64

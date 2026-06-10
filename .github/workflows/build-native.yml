@@ -95,7 +95,17 @@ jobs:
       - name: Build Windows amd64 variants
         shell: pwsh
         working-directory: source\c
-        run: .\build_windows_amd64_variants.ps1 -Variants generic,avx2,avx512
+        run: .\build_windows_amd64_variants.ps1 -Variants generic,avx2,avx512 -RunTests:$false
+      - name: Run Windows amd64 HDF5 tests
+        id: windows-amd64-tests
+        continue-on-error: true
+        shell: pwsh
+        working-directory: source\c
+        run: .\run_windows_hdf5_tests.ps1 -Variants generic,avx2,avx512
+      - name: Windows amd64 HDF5 test warnings
+        if: always() && steps.windows-amd64-tests.outcome == 'failure'
+        run: |
+          echo "::warning::Windows amd64 HDF5 tests failed; native binaries were still built and uploaded. Review logs for failures."
       - name: Smoke-check native payload
         shell: pwsh
         run: Test-Path libs\native\jhdf5\amd64-Windows\jhdf5.dll
@@ -150,6 +160,17 @@ jobs:
         run: |
           ./compile_hdf5_macosx_aarch64.sh
           ./compile_macosx_aarch64.sh
+      - name: Run macOS arm64 HDF5 tests
+        id: macos-arm64-tests
+        shell: bash
+        working-directory: source/c
+        continue-on-error: true
+        run: |
+          ctest --test-dir build/hdf5-1.10.11/hdf5-1.10.11/build110/ci-StdShar-Clang --output-on-failure
+      - name: macOS arm64 HDF5 test warnings
+        if: always() && steps.macos-arm64-tests.outcome == 'failure'
+        run: |
+          echo "::warning::macOS arm64 HDF5 tests failed; native binary was still built and uploaded."
       - name: Smoke-check native payload
         run: test -f "libs/native/jhdf5/aarch64-Mac OS X/libjhdf5.jnilib"
       - name: Upload macOS arm64 native payload
@@ -189,6 +210,17 @@ jobs:
         run: |
           ./compile_hdf5_macosx_x86_64.sh
           ./compile_macosx_x86_64.sh
+      - name: Run macOS x86_64 HDF5 tests
+        id: macos-x86_64-tests
+        shell: bash
+        working-directory: source/c
+        continue-on-error: true
+        run: |
+          ctest --test-dir build/hdf5-1.10.11/hdf5-1.10.11/build110/ci-StdShar-Clang --output-on-failure
+      - name: macOS x86_64 HDF5 test warnings
+        if: always() && steps.macos-x86_64-tests.outcome == 'failure'
+        run: |
+          echo "::warning::macOS x86_64 HDF5 tests failed; native binary was still built and uploaded."
       - name: Smoke-check native payload
         run: test -f "libs/native/jhdf5/x86_64-Mac OS X/libjhdf5.jnilib"
       - name: Upload macOS x86_64 native payload

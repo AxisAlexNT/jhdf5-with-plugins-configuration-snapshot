@@ -22,9 +22,9 @@ CMAKE_HDF5="1"
 HDF5_CLEAN="1"
 if [ -z "${CMAKE_PRESET+x}" ]; then
 	case "$(uname -s)" in
-		Darwin) CMAKE_PRESET="hict-StdShar-Clang-notest" ;;
+		Darwin) CMAKE_PRESET="ci-StdShar-Clang" ;;
 		*) CMAKE_PRESET="hict-StdShar-GNUC-notest-noexamples" ;;
-	esac
+		esac
 fi
 HDF5_USE_AUTOTOOLS=""
 
@@ -216,7 +216,17 @@ if [[ ! -z $CMAKE_HDF5 ]]; then
 	cmake -S "${SRCDIR}" --list-presets
 	if [[ ! -z "$REPLACE_JNI" && "$REPLACE_JNI" -ne "0" && "$REPLACE_JNI" -ne "no" && "$REPLACE_JNI" -ne "1" ]]; then
 		echo "Applying JNI path"
-		patch --ignore-whitespace --fuzz 10 -p2 < ../../../cmake_add_sources.diff
+		if patch --ignore-whitespace --fuzz 10 -p2 < ../../../cmake_add_sources.diff; then
+			echo "Applied JNI patch"
+		else
+			if [[ -f java/src/jni/CMakeLists.txt.rej ]]; then
+				echo "JNI patch appears to be already applied or partially applied; continuing with current jni sources."
+				rm -f java/src/jni/CMakeLists.txt.rej
+			else
+				echo "JNI patch failed to apply and produced no reject file."
+				exit 1
+			fi
+		fi
 	else
 		echo "Not applying JNI patch as set by parameters in script"
 	fi

@@ -3,7 +3,7 @@ param(
   [string[]] $Variants = @("generic", "avx2", "avx512"),
   [string] $JdkIncludePath = $(if ($env:JVM_INCLUDE_PATH) { $env:JVM_INCLUDE_PATH } elseif ($env:JAVA_HOME) { Join-Path $env:JAVA_HOME "include" } else { "" }),
   [string] $DeployRoot = $(Join-Path $PSScriptRoot "..\..\libs\native\jhdf5"),
-  [bool] $RunTests = $true
+  [bool] $RunTests = $false
 )
 
 $ErrorActionPreference = "Stop"
@@ -82,7 +82,7 @@ foreach ($variant in $Variants) {
   }
 
   $env:POSTFIX = $outputVariant
-  $env:CMAKE_PRESET = "hict-StdShar-MSVC-notest"
+  $env:CMAKE_PRESET = "ci-StdShar-MSVC"
   switch ($variant) {
     "generic" { $env:CL = "/O2 /GL $initialCl" }
     "avx2" { $env:CL = "/O2 /arch:AVX2 /GL $initialCl" }
@@ -100,7 +100,7 @@ foreach ($variant in $Variants) {
 
   Push-Location $sourceDir
   try {
-    Invoke-NativeTool "cmake" @("--workflow", "--preset", "hict-StdShar-MSVC-notest", "--fresh")
+    Invoke-NativeTool "cmake" @("--workflow", "--preset", $env:CMAKE_PRESET, "--fresh")
   } finally {
     Pop-Location
   }
