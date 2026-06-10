@@ -11,7 +11,7 @@ VARIANTS=("$@")
 case "$ARCH" in
   amd64|x86_64)
     IMAGE="${JHDF5_MANYLINUX_IMAGE_X86_64:-quay.io/pypa/manylinux2014_x86_64:latest}"
-    DEFAULT_VARIANTS=("generic" "avx2" "avx512")
+    DEFAULT_VARIANTS=("generic" "avx2")
     ;;
   arm64|aarch64)
     IMAGE="${JHDF5_MANYLINUX_IMAGE_AARCH64:-quay.io/pypa/manylinux2014_aarch64:latest}"

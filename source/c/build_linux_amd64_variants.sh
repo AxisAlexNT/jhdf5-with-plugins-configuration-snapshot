@@ -24,7 +24,7 @@ fi
 
 VARIANTS=("$@")
 if [[ ${#VARIANTS[@]} -eq 0 ]]; then
-  VARIANTS=("generic" "avx2" "avx512")
+  VARIANTS=("generic" "avx2")
 fi
 
 build_variant() {

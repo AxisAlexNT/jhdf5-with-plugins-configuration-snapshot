@@ -30,7 +30,7 @@ jobs:
       - name: Grant execute permissions
         run: chmod +x gradlew source/c/*.sh
       - name: Build Linux amd64 variants
-        run: ./source/c/build_linux_manylinux.sh amd64 generic avx2 avx512
+        run: ./source/c/build_linux_manylinux.sh amd64 generic avx2
       - name: Smoke-check native payload
         run: test -f libs/native/jhdf5/amd64-Linux/libjhdf5.so
       - name: Upload Linux native payload
