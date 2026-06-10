@@ -11,7 +11,7 @@ VARIANTS=("$@")
   case "$ARCH" in
   amd64|x86_64)
     IMAGE="${JHDF5_MANYLINUX_IMAGE_X86_64:-quay.io/pypa/manylinux2014_x86_64:latest}"
-    DEFAULT_VARIANTS=("generic" "avx2" "avx512")
+    DEFAULT_VARIANTS=("generic" "avx2")
     ;;
   arm64|aarch64)
     IMAGE="${JHDF5_MANYLINUX_IMAGE_AARCH64:-quay.io/pypa/manylinux2014_aarch64:latest}"
@@ -23,8 +23,36 @@ VARIANTS=("$@")
     ;;
 esac
 
-if [[ ${#VARIANTS[@]} -eq 0 && ${#DEFAULT_VARIANTS[@]} -gt 0 ]]; then
-  VARIANTS=("${DEFAULT_VARIANTS[@]}")
+if [[ "${ARCH}" == "amd64" || "${ARCH}" == "x86_64" ]]; then
+  if [[ ${#VARIANTS[@]} -eq 0 && ${#DEFAULT_VARIANTS[@]} -gt 0 ]]; then
+    VARIANTS=("${DEFAULT_VARIANTS[@]}")
+  fi
+
+  FILTERED_VARIANTS=()
+  for variant in "${VARIANTS[@]}"; do
+    case "${variant}" in
+      generic|avx2|baseline)
+        FILTERED_VARIANTS+=("${variant}")
+        ;;
+      avx512)
+        echo "Skipping unsupported Linux amd64 variant '${variant}' (temporarily excluded by CI policy)." >&2
+        ;;
+      *)
+        echo "Unknown variant '${variant}' supplied for Linux amd64; expected generic, avx2, or baseline." >&2
+        exit 1
+        ;;
+    esac
+  done
+
+  if [[ ${#FILTERED_VARIANTS[@]} -eq 0 ]]; then
+    VARIANTS=("${DEFAULT_VARIANTS[@]}")
+  else
+    VARIANTS=("${FILTERED_VARIANTS[@]}")
+  fi
+else
+  if [[ ${#VARIANTS[@]} -eq 0 ]]; then
+    VARIANTS=()
+  fi
 fi
 
 if [[ -z "${JAVA_HOME:-}" || ! -d "${JAVA_HOME}" ]]; then

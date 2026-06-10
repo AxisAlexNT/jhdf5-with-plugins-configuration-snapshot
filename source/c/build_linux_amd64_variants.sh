@@ -27,6 +27,26 @@ if [[ ${#VARIANTS[@]} -eq 0 ]]; then
   VARIANTS=("generic" "avx2")
 fi
 
+FILTERED_VARIANTS=()
+for variant in "${VARIANTS[@]}"; do
+  case "${variant}" in
+    generic|avx2|baseline)
+      FILTERED_VARIANTS+=("${variant}")
+      ;;
+    avx512)
+      echo "Skipping unsupported Linux amd64 variant '${variant}' (excluded by CI policy)." >&2
+      ;;
+    *)
+      echo "Unknown variant '${variant}'. Expected: generic, avx2, baseline."
+      exit 1
+      ;;
+  esac
+done
+
+if [[ ${#FILTERED_VARIANTS[@]} -gt 0 ]]; then
+  VARIANTS=("${FILTERED_VARIANTS[@]}")
+fi
+
 build_variant() {
   local variant="$1"
   local output_variant="$variant"

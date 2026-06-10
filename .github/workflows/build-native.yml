@@ -30,26 +30,22 @@ jobs:
       - name: Grant execute permissions
         run: chmod +x gradlew source/c/*.sh
       - name: Build Linux amd64 variants
-        run: ./source/c/build_linux_manylinux.sh amd64 generic avx2 avx512
+        run: ./source/c/build_linux_manylinux.sh amd64 generic avx2
       - name: Smoke-check native payload
         run: test -f libs/native/jhdf5/amd64-Linux/libjhdf5.so
       - name: Upload Linux amd64 generic native payload
         uses: actions/upload-artifact@v6
         with:
           name: jhdf5-linux-amd64-generic-native
-          path: libs/native/jhdf5/amd64-Linux-generic/**
+          path: |
+            libs/native/jhdf5/amd64-Linux/**
+            libs/native/jhdf5/amd64-Linux-generic/**
           if-no-files-found: error
       - name: Upload Linux amd64 avx2 native payload
         uses: actions/upload-artifact@v6
         with:
           name: jhdf5-linux-amd64-avx2-native
           path: libs/native/jhdf5/amd64-Linux-avx2/**
-          if-no-files-found: error
-      - name: Upload Linux amd64 avx512 native payload
-        uses: actions/upload-artifact@v6
-        with:
-          name: jhdf5-linux-amd64-avx512-native
-          path: libs/native/jhdf5/amd64-Linux-avx512/**
           if-no-files-found: error
 
   linux-arm64:
@@ -107,7 +103,9 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: jhdf5-windows-amd64-generic-native
-          path: libs/native/jhdf5/amd64-Windows-generic/**
+          path: |
+            libs/native/jhdf5/amd64-Windows/**
+            libs/native/jhdf5/amd64-Windows-generic/**
           if-no-files-found: error
       - name: Upload Windows amd64 avx2 native payload
         uses: actions/upload-artifact@v6
@@ -240,9 +238,78 @@ jobs:
             exit 1
           fi
 
-          cp "$jar_file" "build/libs/jhdf5-base.jar"
-          cp "$jar_file" "build/libs/jhdf5-avx2.jar"
-          cp "$jar_file" "build/libs/jhdf5-avx512.jar"
+          for variant in base avx2 avx512; do
+            variant_dir="build/libs/.variant_pack/${variant}"
+            mkdir -p "${variant_dir}"
+            rm -rf "${variant_dir:?}/.payload"
+            mkdir -p "${variant_dir}/.payload"
+            tmpdir="${variant_dir}/.payload"
+            (cd "${tmpdir}" && jar -xf "${GITHUB_WORKSPACE:-$(pwd)}/${jar_file#./}")
+            stage_native="${tmpdir}/libs/native/jhdf5"
+            if [[ -d "${stage_native}" ]]; then
+              if compgen -G "${stage_native}/*" > /dev/null; then
+                for candidate in "${stage_native}"/*; do
+                  candidate_name="$(basename "${candidate}")"
+                  case "${candidate_name}" in
+                    amd64-Linux|amd64-Linux-avx2|amd64-Linux-avx512)
+                      keep="true"
+                      if [[ "${variant}" == "base" && "${candidate_name}" != "amd64-Linux" ]]; then
+                        keep="false"
+                      elif [[ "${variant}" == "avx2" && "${candidate_name}" != "amd64-Linux-avx2" ]]; then
+                        keep="false"
+                      elif [[ "${variant}" == "avx512" && "${candidate_name}" != "amd64-Linux-avx512" ]]; then
+                        keep="false"
+                      fi
+                      ;;
+                    amd64-Windows|amd64-Windows-generic|amd64-Windows-avx2|amd64-Windows-avx512)
+                      keep="false"
+                      if [[ "${variant}" == "base" && "${candidate_name}" == "amd64-Windows" ]]; then
+                        keep="true"
+                      elif [[ "${variant}" == "base" && "${candidate_name}" == "amd64-Windows-generic" ]]; then
+                        keep="true"
+                      elif [[ "${variant}" == "avx2" && "${candidate_name}" == "amd64-Windows-avx2" ]]; then
+                        keep="true"
+                      elif [[ "${variant}" == "avx512" && "${candidate_name}" == "amd64-Windows-avx512" ]]; then
+                        keep="true"
+                      fi
+                      ;;
+                    arm64-Linux|x86_64-Mac\ OS\ X|aarch64-Mac\ OS\ X)
+                      keep="true"
+                      ;;
+                    *)
+                      keep="false"
+                      ;;
+                  esac
+                  if [[ "${keep}" == "false" ]]; then
+                    rm -rf "${candidate}"
+                  fi
+                done
+              fi
+            fi
+            case "${variant}" in
+              base)
+                if [[ ! -d "${tmpdir}/libs/native/jhdf5/amd64-Linux" ]]; then
+                  echo "Skipping ${variant} jar: amd64-Linux missing."
+                  continue
+                fi
+                ;;
+              avx2)
+                if [[ ! -d "${tmpdir}/libs/native/jhdf5/amd64-Linux-avx2" ]]; then
+                  echo "Skipping ${variant} jar: amd64-Linux-avx2 missing."
+                  continue
+                fi
+                ;;
+              avx512)
+                if [[ ! -d "${tmpdir}/libs/native/jhdf5/amd64-Linux-avx512" ]]; then
+                  echo "Skipping ${variant} jar: amd64-Linux-avx512 missing."
+                  continue
+                fi
+                ;;
+            esac
+            jar -cf "build/libs/jhdf5-${variant}.jar" -C "${tmpdir}" .
+            rm -rf "${variant_dir}/.payload"
+          done
+
       - name: Validate packaged jar
         run: |
           jar_path="$(find build/libs -maxdepth 1 -type f -name 'sis-jhdf5-*.jar' -not -name '*-sources.jar' -not -name '*-javadoc.jar' -not -name '*-h5ar-cli-*.jar' | sort | tail -n 1)"
