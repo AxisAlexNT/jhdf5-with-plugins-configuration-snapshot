@@ -38,6 +38,7 @@ if [[ ! -f "$SCRIPT_PATH/CMake-hdf5-1.10.11.zip" ]]; then
 fi
 
 VARIANT_ARGS="${VARIANTS[*]}"
+CMAKE_VERSION="${JHDF5_CMAKE_VERSION:-3.29.6}"
 
 docker run --rm -i \
   -v "${REPO_ROOT}:${REPO_ROOT}" \
@@ -46,6 +47,7 @@ docker run --rm -i \
   -e GITHUB_WORKSPACE="${REPO_ROOT}" \
   -e JHDF5_ARCH="${ARCH}" \
   -e JHDF5_VARIANTS="${VARIANT_ARGS}" \
+  -e CMAKE_VERSION="${CMAKE_VERSION}" \
   -e JAVA_HOME="${JAVA_HOME}" \
   -e PATH="${JAVA_HOME}/bin:/usr/local/bin:/usr/bin:/bin" \
   -e HDF5_CMAKE_ARCHIVE_URL="${HDF5_CMAKE_ARCHIVE_URL:-}" \
@@ -88,7 +90,7 @@ docker run --rm -i \
 
     python3 -m ensurepip --upgrade >/dev/null 2>&1 || true
     python3 -m pip install --upgrade pip >/dev/null
-    python3 -m pip install --upgrade cmake ninja >/dev/null
+    python3 -m pip install --upgrade "cmake==${CMAKE_VERSION}" ninja >/dev/null
 
     export PATH="/usr/local/bin:${PATH}"
     python3 --version
