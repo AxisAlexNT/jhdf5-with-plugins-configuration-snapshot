@@ -11,7 +11,8 @@
       "generator": "Unix Makefiles",
       "cacheVariables": {
         "HDF5_ALLOW_EXTERNAL_SUPPORT": "TGZ",
-        "TGZPATH": {"type": "STRING", "value": "${sourceParentDir}/"}
+        "TGZPATH": {"type": "STRING", "value": "${sourceParentDir}/"},
+        "ZLIB_USE_LOCALCONTENT": "OFF"
       }
     },
     {
@@ -21,7 +22,7 @@
       "generator": "Unix Makefiles",
       "cacheVariables": {
         "HDF5_PACKAGE_EXTLIBS": "ON",
-        "ZLIB_USE_LOCALCONTENT": "ON",
+        "ZLIB_USE_LOCALCONTENT": "OFF",
 	"HDF5_ENABLE_ZLIB_SUPPORT": "ON",
 	"HDF5_ENABLE_Z_LIB_SUPPORT": "ON",
         "LIBAEC_USE_LOCALCONTENT": "ON",

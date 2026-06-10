@@ -53,7 +53,7 @@ jobs:
         working-directory: source/c
         continue-on-error: true
         run: |
-          TEST_DIR="$(find build/hdf5-1.10.11/hdf5-1.10.11/build110 -maxdepth 1 -type d -name 'hict-StdShar-GNUC*' | head -n 1)"
+          TEST_DIR="$(find . -type d -path '*/hdf5-1.10.11/build110/hict-StdShar-GNUC*' -o -path '*/hdf5-1.10.11/build110/ci-StdShar-GNUC*' | sort | head -n 1)"
           if [[ -z "${TEST_DIR}" ]]; then
             echo "::warning::Linux amd64 HDF5 test directory was not found; skipping tests."
             exit 0
@@ -94,7 +94,7 @@ jobs:
         working-directory: source/c
         continue-on-error: true
         run: |
-          TEST_DIR="$(find build/hdf5-1.10.11/hdf5-1.10.11/build110 -maxdepth 1 -type d -name 'hict-StdShar-GNUC*' | head -n 1)"
+          TEST_DIR="$(find . -type d -path '*/hdf5-1.10.11/build110/hict-StdShar-GNUC*' -o -path '*/hdf5-1.10.11/build110/ci-StdShar-GNUC*' | sort | head -n 1)"
           if [[ -z "${TEST_DIR}" ]]; then
             echo "::warning::Linux arm64 HDF5 test directory was not found; skipping tests."
             exit 0
@@ -206,7 +206,7 @@ jobs:
         working-directory: source/c
         continue-on-error: true
         run: |
-          TEST_DIR="$(find build/hdf5-1.10.11/hdf5-1.10.11/build110 -maxdepth 1 -type d -name 'hict-StdShar-Clang*' | head -n 1)"
+          TEST_DIR="$(find . -type d -path '*/hdf5-1.10.11/build110/hict-StdShar-Clang*' -o -path '*/hdf5-1.10.11/build110/ci-StdShar-Clang*' | sort | head -n 1)"
           if [[ -z "${TEST_DIR}" ]]; then
             echo "::warning::macOS arm64 HDF5 test directory was not found; skipping tests."
             exit 0
@@ -261,7 +261,7 @@ jobs:
         working-directory: source/c
         continue-on-error: true
         run: |
-          TEST_DIR="$(find build/hdf5-1.10.11/hdf5-1.10.11/build110 -maxdepth 1 -type d -name 'hict-StdShar-Clang*' | head -n 1)"
+          TEST_DIR="$(find . -type d -path '*/hdf5-1.10.11/build110/hict-StdShar-Clang*' -o -path '*/hdf5-1.10.11/build110/ci-StdShar-Clang*' | sort | head -n 1)"
           if [[ -z "${TEST_DIR}" ]]; then
             echo "::warning::macOS x86_64 HDF5 test directory was not found; skipping tests."
             exit 0

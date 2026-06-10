@@ -22,13 +22,16 @@ CMAKE_HDF5="1"
 HDF5_CLEAN="1"
 if [ -z "${CMAKE_PRESET+x}" ]; then
 	case "$(uname -s)" in
-		Darwin) CMAKE_PRESET="hict-StdShar-Clang-notest-noexamples" ;;
+		Darwin) CMAKE_PRESET="ci-StdShar-Clang-notest-noexamples" ;;
 		*) CMAKE_PRESET="hict-StdShar-GNUC-notest-noexamples" ;;
 	esac
 fi
 
 normalize_preset() {
 	local preset="$1"
+	if [[ "$preset" == hict-* ]]; then
+		preset="${preset/#hict-/ci-}"
+	fi
 	preset="${preset%%-}"
 	echo "$preset"
 }
@@ -240,9 +243,6 @@ if [[ ! -z $CMAKE_HDF5 ]]; then
 	fi
 	rm -f cmake.std*.log
 	cmake_args=(--workflow --preset="$CMAKE_PRESET" --fresh)
-	if [[ "$(uname -s)" == "Darwin" ]]; then
-		cmake_args+=("-DZLIB_USE_LOCALCONTENT:BOOL=OFF")
-	fi
 	cmake "${cmake_args[@]}" > >(tee -a cmake.stdout.log) 2> >(tee -a cmake.stderr.log >&2)
 	cd ..
 fi

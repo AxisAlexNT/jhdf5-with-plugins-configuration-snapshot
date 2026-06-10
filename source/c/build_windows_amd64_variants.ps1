@@ -100,6 +100,7 @@ foreach ($variant in $Variants) {
 
 	$env:POSTFIX = $outputVariant
 	$requestedPreset = if ($env:CMAKE_PRESET) { $env:CMAKE_PRESET } else { "hict-StdShar-MSVC-notest" }
+$requestedPreset = $requestedPreset -replace '^hict-', 'ci-'
 	$requestedPreset = Normalize-CMakePreset -Preset $requestedPreset
 	$env:CMAKE_PRESET = $requestedPreset
   switch ($variant) {
