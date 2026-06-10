@@ -34,7 +34,7 @@ foreach ($variant in $Variants) {
   }
 
   $env:POSTFIX = $outputVariant
-  $env:CMAKE_PRESET = "hict-StdShar-MSVC-notest"
+  $env:CMAKE_PRESET = "ci-StdShar-MSVC"
   switch ($variant) {
     "generic" { $env:CL = "/O2 /GL $initialCl" }
     "avx2" { $env:CL = "/O2 /arch:AVX2 /GL $initialCl" }
@@ -52,13 +52,13 @@ foreach ($variant in $Variants) {
 
   Push-Location $sourceDir
   try {
-    Invoke-NativeTool "cmake" @("--workflow", "--preset", "hict-StdShar-MSVC-notest", "--fresh")
+    Invoke-NativeTool "cmake" @("--workflow", "--preset", "ci-StdShar-MSVC", "--fresh")
   } finally {
     Pop-Location
   }
 
-  $binaryDir = Join-Path $sourceDir "build110\hict-StdShar-MSVC\bin\Release"
-  $buildRoot = Join-Path $sourceDir "build110\hict-StdShar-MSVC"
+  $binaryDir = Join-Path $sourceDir "build110\ci-StdShar-MSVC\bin\Release"
+  $buildRoot = Join-Path $sourceDir "build110\ci-StdShar-MSVC"
   $deployDir = Join-Path $DeployRoot "amd64-Windows-$outputVariant"
   New-Item -ItemType Directory -Force -Path $deployDir | Out-Null
   Get-ChildItem $binaryDir -Filter "*.dll" | Copy-Item -Destination $deployDir -Force
@@ -91,4 +91,13 @@ foreach ($variant in $Variants) {
     Copy-Item (Join-Path $deployDir "hdf5_java.dll") (Join-Path $deployDir "jhdf5.dll") -Force
   }
   Write-Host "[jhdf5] Deployed Windows amd64 $outputVariant DLLs to $deployDir"
+}
+
+$genericDeployDir = Join-Path $DeployRoot "amd64-Windows"
+$sourceGenericDir = Join-Path $DeployRoot "amd64-Windows-generic"
+if (Test-Path $sourceGenericDir) {
+  Remove-Item -Recurse -Force $genericDeployDir -ErrorAction SilentlyContinue
+  New-Item -ItemType Directory -Force -Path $genericDeployDir | Out-Null
+  Copy-Item (Join-Path $sourceGenericDir "*") -Destination $genericDeployDir -Recurse -Force
+  Write-Host "[jhdf5] Synced generic Windows payload to $genericDeployDir"
 }

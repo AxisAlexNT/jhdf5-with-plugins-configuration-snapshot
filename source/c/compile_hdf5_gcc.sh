@@ -8,7 +8,7 @@ set -x
 source version.sh
 SOURCE_VERSION="$VERSION"
 PLATFORM="$1"
-PATCHES="$2"
+PATCHES="${2:-}"
 
 if [ -z "${CFLAGS+x}" ]; then
   CFLAGS="-O3 -fPIC"
@@ -130,7 +130,7 @@ if [[ ! -z $BUILD_HDF5 ]]; then
 	if [ "`uname`" == "Darwin" ]; then
 	   NCPU=`sysctl -n hw.ncpu`
 	else
-	   NCPU=`lscpu|awk '/^CPU\(s\)/ {print $2}'`
+	   NCPU=`getconf _NPROCESSORS_ONLN 2>/dev/null || nproc 2>/dev/null || lscpu|awk '/^CPU\(s\)/ {print $2}'`
 	fi
 	
 	echo "Number of CPUs is $NCPU" 

@@ -66,6 +66,13 @@ build_variant() {
       JHDF5_DEPLOY_DIR="$REPO_ROOT/libs/native/jhdf5/amd64-Linux-$output_variant" \
       ./compile_linux_amd64.sh
   )
+
+  if [[ "$output_variant" == "generic" ]]; then
+    local base_deploy_dir="$REPO_ROOT/libs/native/jhdf5/amd64-Linux"
+    rm -rf "$base_deploy_dir"
+    mkdir -p "$base_deploy_dir"
+    cp -a "$REPO_ROOT/libs/native/jhdf5/amd64-Linux-$output_variant"/. "$base_deploy_dir"/
+  fi
 }
 
 for variant in "${VARIANTS[@]}"; do

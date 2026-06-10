@@ -24,18 +24,13 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-      - name: Install build prerequisites
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends build-essential cmake curl file ninja-build pkg-config unzip xz-utils zip
       - name: Download HDF5 CMake archive
         working-directory: source/c
         run: curl -L --retry 5 --fail -o "${HDF5_CMAKE_ARCHIVE_NAME}" "${HDF5_CMAKE_ARCHIVE_URL}"
       - name: Grant execute permissions
         run: chmod +x gradlew source/c/*.sh
       - name: Build Linux amd64 variants
-        working-directory: source/c
-        run: ./build_linux_amd64_variants.sh generic avx2 avx512
+        run: ./source/c/build_linux_manylinux.sh amd64 generic avx2 avx512
       - name: Smoke-check native payload
         run: test -f libs/native/jhdf5/amd64-Linux/libjhdf5.so
       - name: Upload Linux native payload
@@ -54,20 +49,13 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-      - name: Install build prerequisites
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends build-essential cmake curl file ninja-build pkg-config unzip xz-utils zip
       - name: Download HDF5 CMake archive
         working-directory: source/c
         run: curl -L --retry 5 --fail -o "${HDF5_CMAKE_ARCHIVE_NAME}" "${HDF5_CMAKE_ARCHIVE_URL}"
       - name: Grant execute permissions
         run: chmod +x gradlew source/c/*.sh
       - name: Build Linux arm64 payload
-        working-directory: source/c
-        run: |
-          ./compile_hdf5_linux_arm64.sh
-          ./compile_linux_arm64.sh
+        run: ./source/c/build_linux_manylinux.sh arm64
       - name: Smoke-check native payload
         run: test -f libs/native/jhdf5/arm64-Linux/libjhdf5.so
       - name: Upload Linux arm64 native payload
