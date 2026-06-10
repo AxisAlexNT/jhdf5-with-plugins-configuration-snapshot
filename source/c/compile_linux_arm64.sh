@@ -73,7 +73,7 @@ cd "$BUILDDIR"
 cp "$SRCDIR/src/H5win32defs.h" "$BUILDDIR/jni/"
 cp "$SRCDIR/src/H5private.h" "$BUILDDIR/jni/"
 
-HDF5_CMAKE_PRESET="${CMAKE_PRESET:-hict-StdShar-GNUC-noexamples}"
+HDF5_CMAKE_PRESET="${CMAKE_PRESET:-hict-StdShar-GNUC-notest-noexamples}"
 PDIR="$BUILDDIR/hdf5-$VERSION/build110/$HDF5_CMAKE_PRESET/_CPack_Packages/Linux/TGZ/HDF5-1.10.11-Linux/HDF_Group/HDF5/1.10.11/"
 BDIR="$BUILDDIR/hdf5-$VERSION/build110/$HDF5_CMAKE_PRESET/"
 HDF5_PUBLIC_INCLUDE="$PDIR/include"

@@ -110,10 +110,8 @@ jobs:
       - name: Install CMake and Fortran toolchain
         run: |
           brew update
-          brew install gcc
+          brew install cmake gcc
           echo "$(brew --prefix gcc)/bin" >> "$GITHUB_PATH"
-          python3 -m pip install --user --upgrade "cmake==3.29.6" ninja
-          echo "$(python3 -m site --user-base)/bin" >> "$GITHUB_PATH"
           gfortran_path="$(command -v gfortran || command -v gfortran-14 || true)"
           if [[ -z "${gfortran_path}" ]]; then
             echo "::error::gfortran was not found after installing gcc." >&2
@@ -151,10 +149,8 @@ jobs:
       - name: Install CMake and Fortran toolchain
         run: |
           brew update
-          brew install gcc
+          brew install cmake gcc
           echo "$(brew --prefix gcc)/bin" >> "$GITHUB_PATH"
-          python3 -m pip install --user --upgrade "cmake==3.29.6" ninja
-          echo "$(python3 -m site --user-base)/bin" >> "$GITHUB_PATH"
           gfortran_path="$(command -v gfortran || command -v gfortran-14 || true)"
           if [[ -z "${gfortran_path}" ]]; then
             echo "::error::gfortran was not found after installing gcc." >&2
