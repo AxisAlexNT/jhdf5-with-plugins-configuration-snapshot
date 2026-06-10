@@ -44,26 +44,40 @@ normalize_preset() {
 
 CMAKE_PRESET="$(normalize_preset "${CMAKE_PRESET}")"
 HDF5_USE_AUTOTOOLS=""
+BUILD_WITH_WORKFLOW=1
 
 resolve_workflow_preset() {
 	local requested="$1"
 	local source_dir="$2"
-	local available_presets=()
-	local available_preset
-	while IFS= read -r available_preset; do
-		available_presets+=("$available_preset")
-	done < <(
-		cmake -S "$source_dir" --list-presets 2>/dev/null | \
-		awk '
-			/^Available workflow presets:/{in_workflow=1; next}
-			in_workflow && /^  "/ {
-				gsub(/^  "/, "", $0);
-				gsub(/"$/, "", $0);
-				print $0
-			}
-			in_workflow && /^[^ "]/ {in_workflow=0}
-		'
-	)
+	local available_presets=""
+	local cmake_presets
+	BUILD_WITH_WORKFLOW=1
+	cmake_presets="$(cmake -S "$source_dir" --list-presets 2>/dev/null)"
+
+	available_presets="$(printf '%s\n' "$cmake_presets" | awk '
+		/^Available workflow presets:/{in_section=1; next}
+		in_section && $0 ~ /^[[:space:]]*"[^"]+"/ {
+			gsub(/^[[:space:]]*"/, "", $0);
+			gsub(/"[[:space:]]*$/, "", $0);
+			print $0
+		}
+		in_section && $0 !~ /^[[:space:]]*"/ {in_section=0}
+	')"
+
+	if [[ -z "${available_presets}" ]]; then
+		BUILD_WITH_WORKFLOW=0
+		available_presets="$(printf '%s\n' "$cmake_presets" | awk '
+		/^Available configure presets:/{in_section=1; next}
+		in_section && $0 ~ /^[[:space:]]*"[^"]+"/ {
+			gsub(/^[[:space:]]*"/, "", $0);
+			gsub(/"[[:space:]]*$/, "", $0);
+			print $0
+		}
+		in_section && $0 !~ /^[[:space:]]*"/ {in_section=0}
+	')"
+	else
+		BUILD_WITH_WORKFLOW=1
+	fi
 
 	local candidates=(
 		"$requested"
@@ -74,22 +88,28 @@ resolve_workflow_preset() {
 		"${requested/-noexamples/}"
 	)
 	local candidate
-	local available
+	local line
 	for candidate in "${candidates[@]}"; do
 		candidate="$(normalize_preset "$candidate")"
 		[[ -z "$candidate" ]] && continue
-		for available in "${available_presets[@]}"; do
-			if [[ "$candidate" == "$available" ]]; then
+		while IFS= read -r line; do
+			if [[ "$candidate" == "$line" ]]; then
 				echo "$candidate"
 				return 0
 			fi
-		done
+		done <<<"${available_presets}"
 	done
 
-	echo "Could not resolve workflow preset '$requested' to any available workflow preset." >&2
-	echo "Available workflow presets:" >&2
-	if [[ "${#available_presets[@]}" -gt 0 ]]; then
-		printf '  %s\n' "${available_presets[@]}" >&2
+	echo "Could not resolve CMake preset '$requested' to any available preset." >&2
+	if [[ "$BUILD_WITH_WORKFLOW" -eq 1 ]]; then
+		echo "Available workflow presets:" >&2
+	else
+		echo "Available configure presets:" >&2
+	fi
+	if [[ -n "${available_presets}" ]]; then
+		while IFS= read -r line; do
+			printf '  %s\n' "$line" >&2
+		done <<<"${available_presets}"
 	else
 		echo "  (none available or cmake --list-presets parsing failed)" >&2
 	fi
@@ -97,12 +117,12 @@ resolve_workflow_preset() {
 }
 
 # Should java/src/jni folder be overwritten by JHDF5 patches?
-if [ -z ${REPLACE_JNI+x} ]; then  
+if [ -z ${REPLACE_JNI+x} ]; then
 	REPLACE_JNI="0"
- 	echo "REPLACE_JNI variable was not provided in environment, default set to no (0)"
- else 
- 	echo "REPLACE_JNI variable is provided and is set to $REPLACE_JNI"
- fi
+	echo "REPLACE_JNI variable was not provided in environment, default set to no (0)"
+else
+	echo "REPLACE_JNI variable is provided and is set to $REPLACE_JNI"
+fi
 
 export CMAKE_POLICY_VERSION_MINIMUM="${CMAKE_POLICY_VERSION_MINIMUM:-3.5}"
 export CC="${CC:-gcc}"
@@ -262,7 +282,7 @@ fi
 if [[ ! -z $CMAKE_HDF5 ]]; then
 	SRCDIR=$(realpath hdf5-$VERSION/hdf5-$SOURCE_VERSION/)
 	cp -af ../CMakeUserPresets.json $SRCDIR/CMakeUserPresets.json
-	if [[ ! -z "$REPLACE_JNI" && "$REPLACE_JNI" -ne "0" && "$REPLACE_JNI" -ne "no" && "$REPLACE_JNI" -ne "1" ]]; then
+	if [[ "$REPLACE_JNI" == "1" || "$REPLACE_JNI" == "yes" || "$REPLACE_JNI" == "true" ]]; then
 		cp -arf ../jni $SRCDIR/java/src/
 		cp -arf ../*.c $SRCDIR/java/src/jni/
 	fi
@@ -282,7 +302,7 @@ if [[ ! -z $CMAKE_HDF5 ]]; then
 	cd $SRCDIR
 	echo "Available CMake presets:"
 	cmake -S "${SRCDIR}" --list-presets
-	if [[ ! -z "$REPLACE_JNI" && "$REPLACE_JNI" -ne "0" && "$REPLACE_JNI" -ne "no" && "$REPLACE_JNI" -ne "1" ]]; then
+	if [[ "$REPLACE_JNI" == "1" || "$REPLACE_JNI" == "yes" || "$REPLACE_JNI" == "true" ]]; then
 		echo "Applying JNI path"
 		if patch --ignore-whitespace --fuzz 10 -p2 < ../../../cmake_add_sources.diff; then
 			echo "Applied JNI patch"
@@ -300,7 +320,14 @@ if [[ ! -z $CMAKE_HDF5 ]]; then
 	fi
 	rm -f cmake.std*.log
 	CMAKE_PRESET="$(resolve_workflow_preset "$CMAKE_PRESET" "$SRCDIR")"
-	cmake_args=(--workflow --preset="$CMAKE_PRESET" --fresh)
+	if [[ "$BUILD_WITH_WORKFLOW" -eq 1 ]]; then
+		cmake_args=(--workflow --preset="$CMAKE_PRESET" --fresh)
+	else
+		cmake_args=(--preset="$CMAKE_PRESET" --fresh)
+	fi
 	cmake "${cmake_args[@]}" > >(tee -a cmake.stdout.log) 2> >(tee -a cmake.stderr.log >&2)
+	if [[ "$BUILD_WITH_WORKFLOW" -ne 1 ]]; then
+		cmake --build --preset="$CMAKE_PRESET" > >(tee -a cmake.stdout.log) 2> >(tee -a cmake.stderr.log >&2)
+	fi
 	cd ..
 fi

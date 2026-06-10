@@ -82,35 +82,46 @@ function Normalize-CMakePreset {
   return $normalized
 }
 
-function Get-AvailableWorkflowPresets {
-  param([string] $SourceDir)
+function Get-CMakePresetList {
+  param(
+    [string] $SourceDir,
+    [string] $SectionName
+  )
 
   $output = & cmake -S "$SourceDir" --list-presets 2>&1
-  $inWorkflow = $false
-  $presets = New-Object System.Collections.Generic.HashSet[string]
+  if ($LASTEXITCODE -ne 0) {
+    Write-Warning "cmake --list-presets returned non-zero exit code ($LASTEXITCODE) while reading presets from $SourceDir"
+  }
 
+  $inSection = $false
+  $result = New-Object System.Collections.Generic.List[string]
   foreach ($line in ($output -split "`r?`n")) {
-    if ($line -match '^Available workflow presets:') {
-      $inWorkflow = $true
+    $trimmed = $line.Trim()
+    if ($trimmed -eq "Available $SectionName presets:") {
+      $inSection = $true
       continue
     }
-    if ($inWorkflow) {
-      if ($line -match '^  "([^"]+)"') {
-        [void]$presets.Add($Matches[1])
-      } elseif ($line -match '^\S') {
+    if ($inSection) {
+      if ($trimmed -match '^"(.+)"$') {
+        [void]$result.Add($Matches[1])
+      } elseif ($trimmed -and ($trimmed -notmatch '^\s*".*"$')) {
         break
       }
     }
   }
-
-  if (-not $presets -or $presets.Count -eq 0) {
-    return New-Object System.Collections.Generic.HashSet[string]
-  }
-  return $presets
+  return $result
 }
 
-function Resolve-CMakeWorkflowPreset {
+function Resolve-CMakePreset {
   param([string] $Preset, [string] $SourceDir)
+
+  $workflowPresets = Get-CMakePresetList -SourceDir $SourceDir -SectionName "workflow"
+  $configurePresets = Get-CMakePresetList -SourceDir $SourceDir -SectionName "configure"
+
+  $script:USE_CMAKE_WORKFLOW = $workflowPresets.Count -gt 0
+  if (-not $script:USE_CMAKE_WORKFLOW -and $configurePresets.Count -gt 0) {
+    Write-Host "[jhdf5] Workflow preset section is unavailable; falling back to configure/build preset sequence."
+  }
 
   $candidatePresets = @(
     $Preset,
@@ -122,19 +133,50 @@ function Resolve-CMakeWorkflowPreset {
   )
   $candidatePresets = $candidatePresets | Where-Object { $_ } | Select-Object -Unique
 
-  $available = Get-AvailableWorkflowPresets -SourceDir $SourceDir
+  $availablePresets = if ($script:USE_CMAKE_WORKFLOW) { $workflowPresets } else { $configurePresets }
   foreach ($candidate in $candidatePresets) {
     $candidate = Normalize-CMakePreset -Preset $candidate
-    if ($available.Contains($candidate)) {
+    if ($availablePresets.Contains($candidate)) {
       return $candidate
+    }
+    # In configure-only environments, allow workflow-style names to resolve to configure base names.
+    $workflowCandidate = $candidate -replace '^hict-|^ci-'
+    $configureCandidate = ($candidate -replace '-notest-noexamples', '' -replace '-notest', '' -replace '-noexamples', '')
+    if (-not $script:USE_CMAKE_WORKFLOW) {
+      if ($configureCandidate -ne $candidate -and $configurePresets.Contains($configureCandidate)) {
+        return $configureCandidate
+      }
+      if ($workflowCandidate -ne $candidate -and $configurePresets.Contains($workflowCandidate)) {
+        return $workflowCandidate
+      }
     }
   }
 
-  Write-Error "Could not resolve workflow preset '$Preset'. Available workflow presets:"
-  foreach ($name in $available) {
-    Write-Error "  $name"
+  Write-Error "Could not resolve CMake preset '$Preset'."
+  if ($script:USE_CMAKE_WORKFLOW) {
+    Write-Error "Available workflow presets:"
+    foreach ($name in $workflowPresets) {
+      Write-Error "  $name"
+    }
+  } else {
+    Write-Error "Available workflow presets:"
+    Write-Error "  (workflow presets unavailable)"
+    Write-Error "Available configure presets:"
+    if ($configurePresets.Count -gt 0) {
+      foreach ($name in $configurePresets) {
+        Write-Error "  $name"
+      }
+    } else {
+      Write-Error "  (none available or cmake --list-presets parsing failed)"
+    }
   }
   throw "No compatible workflow preset found for '$Preset'"
+}
+
+function Resolve-CMakeWorkflowPreset {
+  param([string] $Preset, [string] $SourceDir)
+  $resolved = Resolve-CMakePreset -Preset $Preset -SourceDir $SourceDir
+  return $resolved
 }
 
 function Resolve-TestBuildPreset {
@@ -174,7 +216,12 @@ foreach ($variant in $Variants) {
 
   Push-Location $sourceDir
   try {
-    Invoke-NativeTool "cmake" @("--workflow", "--preset", $env:CMAKE_PRESET, "--fresh")
+    if ($script:USE_CMAKE_WORKFLOW) {
+      Invoke-NativeTool "cmake" @("--workflow", "--preset", $env:CMAKE_PRESET, "--fresh")
+    } else {
+      Invoke-NativeTool "cmake" @("--preset", $env:CMAKE_PRESET, "--fresh")
+      Invoke-NativeTool "cmake" @("--build", "--preset", (Resolve-TestBuildPreset -Preset $env:CMAKE_PRESET))
+    }
   } finally {
     Pop-Location
   }
