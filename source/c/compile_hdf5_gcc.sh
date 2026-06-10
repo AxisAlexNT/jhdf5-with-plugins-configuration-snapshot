@@ -33,6 +33,33 @@ normalize_preset() {
 	echo "$preset"
 }
 
+extract_cmake_presets() {
+	local section="$1"
+	local cmake_output="$2"
+
+	awk -v section="$section" '
+		BEGIN {
+			in_section = 0;
+		}
+		$0 ~ "^Available " section " presets:" {
+			in_section = 1;
+			next;
+		}
+		in_section {
+			if ($0 ~ /^[[:space:]]*$/) {
+				next;
+			}
+			if ($0 ~ /^[[:space:]]*"[^"]+"/) {
+				gsub(/^[[:space:]]*"/, "", $0);
+				gsub(/"[[:space:]]*$/, "", $0);
+				print $0;
+				next;
+			}
+			in_section = 0;
+		}
+	' <<< "$cmake_output"
+}
+
 CMAKE_PRESET="$(normalize_preset "${CMAKE_PRESET}")"
 HDF5_USE_AUTOTOOLS=""
 BUILD_WITH_WORKFLOW=1
@@ -48,27 +75,11 @@ resolve_workflow_preset() {
 		echo "$cmake_presets" >&2
 	fi
 
-	available_presets="$(printf '%s\n' "$cmake_presets" | awk '
-		/^Available workflow presets:/{in_section=1; next}
-		in_section && $0 ~ /^[[:space:]]*"[^"]+"/ {
-			gsub(/^[[:space:]]*"/, "", $0);
-			gsub(/"[[:space:]]*$/, "", $0);
-			print $0
-		}
-		in_section && $0 !~ /^[[:space:]]*"/ {in_section=0}
-	')"
+	available_presets="$(extract_cmake_presets "workflow" "$cmake_presets")"
 
 	if [[ -z "${available_presets}" ]]; then
 		BUILD_WITH_WORKFLOW=0
-		available_presets="$(printf '%s\n' "$cmake_presets" | awk '
-		/^Available configure presets:/{in_section=1; next}
-		in_section && $0 ~ /^[[:space:]]*"[^"]+"/ {
-			gsub(/^[[:space:]]*"/, "", $0);
-			gsub(/"[[:space:]]*$/, "", $0);
-			print $0
-		}
-		in_section && $0 !~ /^[[:space:]]*"/ {in_section=0}
-	')"
+		available_presets="$(extract_cmake_presets "configure" "$cmake_presets")"
 	else
 		BUILD_WITH_WORKFLOW=1
 	fi
