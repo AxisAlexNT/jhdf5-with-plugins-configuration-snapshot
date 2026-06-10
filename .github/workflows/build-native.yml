@@ -1,0 +1,207 @@
+name: Build JHDF5 natives
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+      - main
+
+permissions:
+  contents: read
+
+env:
+  HDF5_CMAKE_ARCHIVE_URL: https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.11/src/CMake-hdf5-1.10.11.zip
+  HDF5_CMAKE_ARCHIVE_NAME: CMake-hdf5-1.10.11.zip
+
+jobs:
+  linux-amd64:
+    name: Linux amd64
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Set up Temurin JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake curl file ninja-build pkg-config unzip xz-utils zip
+      - name: Download HDF5 CMake archive
+        working-directory: source/c
+        run: curl -L --retry 5 --fail -o "${HDF5_CMAKE_ARCHIVE_NAME}" "${HDF5_CMAKE_ARCHIVE_URL}"
+      - name: Grant execute permissions
+        run: chmod +x gradlew source/c/*.sh
+      - name: Build Linux amd64 variants
+        working-directory: source/c
+        run: ./build_linux_amd64_variants.sh generic avx2 avx512
+      - name: Build JHDF5 jar
+        run: ./gradlew jar
+      - name: Validate packaged Linux natives
+        run: |
+          jar_path="$(find build/libs -maxdepth 1 -type f -name '*.jar' | sort | tail -n 1)"
+          jar tf "${jar_path}" | grep -q '^native/jhdf5/amd64-Linux/libjhdf5.so$'
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: jhdf5-linux-amd64
+          path: |
+            build/libs/*.jar
+            libs/native/jhdf5/amd64-Linux/**
+          if-no-files-found: error
+
+  linux-arm64:
+    name: Linux arm64
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Set up Temurin JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake curl file ninja-build pkg-config unzip xz-utils zip
+      - name: Download HDF5 CMake archive
+        working-directory: source/c
+        run: curl -L --retry 5 --fail -o "${HDF5_CMAKE_ARCHIVE_NAME}" "${HDF5_CMAKE_ARCHIVE_URL}"
+      - name: Grant execute permissions
+        run: chmod +x gradlew source/c/*.sh
+      - name: Build Linux arm64 payload
+        working-directory: source/c
+        run: |
+          ./compile_hdf5_linux_arm64.sh
+          ./compile_linux_arm64.sh
+      - name: Build JHDF5 jar
+        run: ./gradlew jar
+      - name: Validate packaged Linux arm64 natives
+        run: |
+          jar_path="$(find build/libs -maxdepth 1 -type f -name '*.jar' | sort | tail -n 1)"
+          jar tf "${jar_path}" | grep -q '^native/jhdf5/arm64-Linux/libjhdf5.so$'
+      - name: Upload Linux arm64 artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: jhdf5-linux-arm64
+          path: |
+            build/libs/*.jar
+            libs/native/jhdf5/arm64-Linux/**
+          if-no-files-found: error
+
+  windows-amd64:
+    name: Windows amd64
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Set up Temurin JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Download HDF5 CMake archive
+        shell: pwsh
+        working-directory: source\c
+        run: Invoke-WebRequest -Uri $env:HDF5_CMAKE_ARCHIVE_URL -OutFile $env:HDF5_CMAKE_ARCHIVE_NAME
+      - name: Build Windows amd64 variants
+        shell: pwsh
+        working-directory: source\c
+        run: .\build_windows_amd64_variants.ps1 -Variants generic,avx2,avx512
+      - name: Build JHDF5 jar
+        shell: pwsh
+        run: .\gradlew.bat jar
+      - name: Validate packaged Windows natives
+        shell: pwsh
+        run: |
+          $jarPath = Get-ChildItem build\libs -Filter *.jar | Sort-Object LastWriteTime | Select-Object -Last 1
+          if (-not $jarPath) { throw "No JHDF5 jar was produced." }
+          jar tf $jarPath.FullName | Select-String -SimpleMatch 'native/jhdf5/amd64-Windows/jhdf5.dll' | Out-Null
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: jhdf5-windows-amd64
+          path: |
+            build/libs/*.jar
+            libs/native/jhdf5/amd64-Windows/**
+          if-no-files-found: error
+
+  macos-arm64:
+    name: macOS arm64
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Set up Temurin JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Download HDF5 CMake archive
+        working-directory: source/c
+        run: curl -L --retry 5 --fail -o "${HDF5_CMAKE_ARCHIVE_NAME}" "${HDF5_CMAKE_ARCHIVE_URL}"
+      - name: Grant execute permissions
+        run: chmod +x gradlew source/c/*.sh
+      - name: Build macOS arm64 payload
+        working-directory: source/c
+        run: |
+          ./compile_hdf5_macosx_aarch64.sh
+          ./compile_macosx_aarch64.sh
+      - name: Build JHDF5 jar
+        run: ./gradlew jar
+      - name: Validate packaged macOS arm64 natives
+        run: |
+          jar_path="$(find build/libs -maxdepth 1 -type f -name '*.jar' | sort | tail -n 1)"
+          jar tf "${jar_path}" | grep -q '^resources/libs/osx_arm64/libhdf5.dylib$'
+          jar tf "${jar_path}" | grep -q '^native/jhdf5/aarch64-Mac OS X/libjhdf5.jnilib$'
+      - name: Upload macOS arm64 artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: jhdf5-macos-arm64
+          path: |
+            build/libs/*.jar
+            "libs/native/jhdf5/aarch64-Mac OS X/**"
+          if-no-files-found: error
+
+  macos-x86_64:
+    name: macOS x86_64
+    runs-on: macos-15-intel
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Set up Temurin JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Download HDF5 CMake archive
+        working-directory: source/c
+        run: curl -L --retry 5 --fail -o "${HDF5_CMAKE_ARCHIVE_NAME}" "${HDF5_CMAKE_ARCHIVE_URL}"
+      - name: Grant execute permissions
+        run: chmod +x gradlew source/c/*.sh
+      - name: Build macOS x86_64 payload
+        working-directory: source/c
+        run: |
+          ./compile_hdf5_macosx_x86_64.sh
+          ./compile_macosx_x86_64.sh
+      - name: Build JHDF5 jar
+        run: ./gradlew jar
+      - name: Validate packaged macOS x86_64 natives
+        run: |
+          jar_path="$(find build/libs -maxdepth 1 -type f -name '*.jar' | sort | tail -n 1)"
+          jar tf "${jar_path}" | grep -q '^resources/libs/osx_64/libhdf5.dylib$'
+          jar tf "${jar_path}" | grep -q '^native/jhdf5/x86_64-Mac OS X/libjhdf5.jnilib$'
+      - name: Upload macOS x86_64 artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: jhdf5-macos-x86_64
+          path: |
+            build/libs/*.jar
+            "libs/native/jhdf5/x86_64-Mac OS X/**"
+          if-no-files-found: error

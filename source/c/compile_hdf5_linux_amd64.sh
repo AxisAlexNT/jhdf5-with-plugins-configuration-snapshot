@@ -1,3 +1,11 @@
 #! /bin/bash
+set -e
+set -u
+set -o pipefail
 
-CFLAGS='-fPIC -m64' ./compile_hdf5_gcc.sh amd64 ""
+if [ -z "${CFLAGS+x}" ]; then
+  CFLAGS="-O3 -fPIC -m64 -mavx2 -mfma -msse4.2 -mbmi -mbmi2 -mtune=generic"
+fi
+export CFLAGS
+
+./compile_hdf5_gcc.sh amd64 ""

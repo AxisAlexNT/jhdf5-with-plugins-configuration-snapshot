@@ -8,3 +8,9 @@
 /source/c/build
 source/c/hdf5*tar*
 source/c/CMake*zip
+/libs/native/jhdf5/amd64-Linux-generic/
+/libs/native/jhdf5/amd64-Linux-baseline/
+/libs/native/jhdf5/amd64-Linux-avx512/
+/libs/native/jhdf5/amd64-Windows-generic/
+/libs/native/jhdf5/amd64-Windows-baseline/
+/libs/native/jhdf5/amd64-Windows-avx512/

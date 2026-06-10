@@ -1,2 +1,2 @@
-VERSION=1.10.11
-POSTFIX=
+: "${VERSION:=1.10.11}"
+: "${POSTFIX:=}"

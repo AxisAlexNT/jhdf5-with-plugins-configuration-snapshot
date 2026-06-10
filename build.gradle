@@ -8,7 +8,7 @@ dependencies {
 }
 
 tasks.withType(Test) {
-    systemProperty "java.library.path", "libs/native/jhdf5/amd64-Linux:libs/native/jhdf5/amd64-Linux:libs/native/jhdf5/x86_64-Mac OS X:libs/native/jhdf5/aarch64-Mac OS X:libs/native/jhdf5/x86_64-Mac OS X"
+    systemProperty "java.library.path", "libs/native/jhdf5/amd64-Linux:libs/native/jhdf5/amd64-Linux:libs/native/jhdf5/arm64-Linux:libs/native/jhdf5/x86_64-Mac OS X:libs/native/jhdf5/aarch64-Mac OS X:libs/native/jhdf5/x86_64-Mac OS X"
 }
 
 def execute(command, arguments) {
@@ -54,6 +54,14 @@ jar {
 
     from ("libs/") {
         include 'native/jhdf5/**/**/*'
+    }
+    from("libs/native/jhdf5/x86_64-Mac OS X") {
+        into("resources/libs/osx_64")
+        include("**/*.dylib", "**/*.jnilib", "**/*.so")
+    }
+    from("libs/native/jhdf5/aarch64-Mac OS X") {
+        into("resources/libs/osx_arm64")
+        include("**/*.dylib", "**/*.jnilib", "**/*.so")
     }
 
     manifest {
@@ -224,4 +232,3 @@ if (project == project.rootProject)
 }
 
 build.dependsOn distributionZip
-

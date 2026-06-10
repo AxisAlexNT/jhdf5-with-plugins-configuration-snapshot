@@ -6,15 +6,22 @@ set -x
 
 
 source version.sh
+SOURCE_VERSION="$VERSION"
 PLATFORM="$1"
 PATCHES="$2"
+
+if [ -z "${CFLAGS+x}" ]; then
+  CFLAGS="-O3 -fPIC"
+fi
 
 BUILD_HDF5=""
 BUILD_HDF5_PLUGINS=""
 
 CMAKE_HDF5="1"
 HDF5_CLEAN="1"
-CMAKE_PRESET="hict-StdShar-GNUC-notest"
+if [ -z "${CMAKE_PRESET+x}" ]; then
+	CMAKE_PRESET="hict-StdShar-GNUC-notest"
+fi
 HDF5_USE_AUTOTOOLS=""
 
 # Should java/src/jni folder be overwritten by JHDF5 patches?
@@ -58,9 +65,12 @@ if [[ ! -z $CMAKE_HDF5 ]]; then
 	if [[ -f "../CMake-hdf5-$VERSION.zip" ]]; then
 		echo "Found CMake-hdf5-$VERSION.zip"
 		if [[ ! -z "$HDF5_CLEAN" ]]; then
-			echo "HDF5_CLEAN is set to true, removing existing sources"
+		echo "HDF5_CLEAN is set to true, removing existing sources"
 			rm -rf CMake-hdf5-${VERSION}*
 			rm -rf hdf5-$VERSION-$PLATFORM
+			if [ -n "$POSTFIX" ]; then
+				rm -rf hdf5-$VERSION-$POSTFIX
+			fi
 			#mkdir hdf5-$VERSION-$PLATFORM
 		fi
 		cp "../CMake-hdf5-$VERSION.zip" .
@@ -84,8 +94,8 @@ if [[ -d CMake-hdf5-$VERSION ]]; then
 fi
 
 if [ -n "$POSTFIX" ]; then
-  mv hdf5-$VERSION hdf5-$VERSION-$POSTFIX
-  VERSION="$VERSION-$POSTFIX"
+  mv hdf5-$SOURCE_VERSION hdf5-$SOURCE_VERSION-$POSTFIX
+  VERSION="$SOURCE_VERSION-$POSTFIX"
 fi
 
 echo "Copied hdf sources"
@@ -144,7 +154,7 @@ if [[ ! -z $BUILD_HDF5_PLUGINS ]]; then
 fi
 
 if [[ ! -z "$HDF5_USE_AUTOTOOLS" && "$HDF5_USE_AUTOTOOLS" -ne "0" && "$HDF5_USE_AUTOTOOLS" -ne "no" && "$HDF5_USE_AUTOTOOLS" -ne "n" ]]; then
-	SRCDIR=$(realpath hdf5-$VERSION/hdf5-$VERSION/)
+	SRCDIR=$(realpath hdf5-$VERSION/hdf5-$SOURCE_VERSION/)
 	INSDIR=$(realpath hdf5-$VERSION-$PLATFORM/)
 	OPTS=("-DHDF5_BUILD_FORTRAN:BOOL=OFF")
 	OPTS+=("-DHDF5_BUILD_CPP_LIB:BOOL=OFF")
@@ -176,13 +186,24 @@ fi
 
 # Currently, only this way of building HDF5 is supported, using CMake workflow mode:
 if [[ ! -z $CMAKE_HDF5 ]]; then
-	SRCDIR=$(realpath hdf5-$VERSION/hdf5-$VERSION/)
+	SRCDIR=$(realpath hdf5-$VERSION/hdf5-$SOURCE_VERSION/)
 	cp -af ../CMakeUserPresets.json $SRCDIR/CMakeUserPresets.json
 	if [[ ! -z "$REPLACE_JNI" && "$REPLACE_JNI" -ne "0" && "$REPLACE_JNI" -ne "no" && "$REPLACE_JNI" -ne "1" ]]; then
 		cp -arf ../jni $SRCDIR/java/src/
 		cp -arf ../*.c $SRCDIR/java/src/jni/
 	fi
 	cp -af ../*tar.gz "$SRCDIR/../"
+	if [[ ! -f "$SRCDIR/../hdf5_plugins.tar.gz" ]]; then
+		PLUGIN_TMPDIR="$(mktemp -d)"
+		if [[ -f "../hdf5_plugins-release-1_10_11.zip" ]]; then
+			unzip -q "../hdf5_plugins-release-1_10_11.zip" -d "$PLUGIN_TMPDIR"
+			tar -C "$PLUGIN_TMPDIR" -czf "$SRCDIR/../hdf5_plugins.tar.gz" hdf5_plugins-release-1_10_11
+		elif [[ -f "$SRCDIR/../hdf5_plugins-master.zip" ]]; then
+			unzip -q "$SRCDIR/../hdf5_plugins-master.zip" -d "$PLUGIN_TMPDIR"
+			tar -C "$PLUGIN_TMPDIR" -czf "$SRCDIR/../hdf5_plugins.tar.gz" hdf5_plugins-master
+		fi
+		rm -rf "$PLUGIN_TMPDIR"
+	fi
 	echo "HDF5 Source DIR is $SRCDIR"
 	cd $SRCDIR
 	echo "Available CMake presets:"

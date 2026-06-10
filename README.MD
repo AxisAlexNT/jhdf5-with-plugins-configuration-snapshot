@@ -21,6 +21,70 @@ However, that might be too much for our target audience, we need to be able to r
 * Changed compilation scripts inside JHDF5 source folder (namely `source/c/compile_hdf5_linux_gcc.sh` and `source/c/compile_linux_amd64.sh`) in order to support building with CMake and therefore updated directory structure. Also, JNI patching is optionally done at this point (however, now I know it needs to be done separately and linked dynamically to hdf5).
 * Resulting file in Linux is now named `libjhdf5_export_sharedlink.so`.
 
+# Reproducible HiCT amd64 builds
+
+The source archive expected by the scripts is the official HDF5 CMake archive:
+
+```bash
+cd source/c
+curl -L -o CMake-hdf5-1.10.11.zip \
+  https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.11/src/CMake-hdf5-1.10.11.zip
+```
+
+The archive currently used by HiCT was verified with SHA-256:
+
+```text
+746f83358b0facb7e064d1d0dfe13b1451d26fa6caf3a7251f088824c8828ad4  CMake-hdf5-1.10.11.zip
+```
+
+Linux amd64 builds:
+
+```bash
+cd source/c
+JAVA_HOME=/path/to/jdk ./build_linux_amd64_variants.sh generic avx2 avx512
+```
+
+The `generic` variant is the portable amd64 build. The `avx2` variant
+targets AVX2/FMA/SSE4.2/BMI/BMI2 for the modern non-AVX-512 machines HiCT
+currently targets. The `avx512` variant adds AVX-512F/DQ/BW/VL and must only be
+loaded after CPU feature detection. The old `baseline` name is accepted as a
+compatibility alias for `avx2`. Outputs are deployed to:
+
+```text
+libs/native/jhdf5/amd64-Linux-generic
+libs/native/jhdf5/amd64-Linux-avx2
+libs/native/jhdf5/amd64-Linux-avx512
+```
+
+The build scripts use the HDF5 CMake archive in offline/TGZ mode. They repack
+the bundled `hdf5_plugins-release-1_10_11.zip`/`hdf5_plugins-master.zip` into
+the `hdf5_plugins.tar.gz` layout expected by HDF5 CMake, then deploy the freshly
+built compression plugin libraries together with `libhdf5` and `libjhdf5`.
+Legacy plugin copies are used only when the current build did not produce plugin
+libraries.
+
+Windows amd64 builds should be run from a Visual Studio x64 Native Tools shell:
+
+```powershell
+cd source\c
+.\build_windows_amd64_variants.ps1 -Variants generic,avx2,avx512
+```
+
+Outputs are deployed to:
+
+```text
+libs/native/jhdf5/amd64-Windows-generic
+libs/native/jhdf5/amd64-Windows-avx2
+libs/native/jhdf5/amd64-Windows-avx512
+```
+
+The Windows script follows the same layout: build/deploy the HDF5 DLLs and
+freshly built plugin DLLs first, then fall back to legacy plugin DLLs if needed.
+
+The legacy `amd64-Linux` and `amd64-Windows` bundled binaries are kept for
+compatibility. HiCT should fall back to those or to the Java implementation if a
+new native variant is unavailable or rejected by runtime CPU checks.
+
 
 
 # Details
