@@ -2,17 +2,36 @@ name: Build JHDF5 natives and jar
 
 on:
   workflow_dispatch:
+    inputs:
+      native_cache_version:
+        description: "Manual cache/artifact version for native payloads and packaged jars. Bump to force rebuild."
+        required: false
+        default: "v1"
+      force_native_rebuild:
+        description: "Ignore restored native caches and rebuild all native payloads."
+        type: boolean
+        required: false
+        default: false
   push:
-    branches: [master, main]
+    branches: [master, main, jvm-sfx-native]
   release:
     types: [published]
 
 permissions:
   contents: write
+  actions: read
+
+concurrency:
+  group: jhdf5-native-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.native_cache_version || 'v1' }}
+  cancel-in-progress: false
 
 env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  HDF5_VERSION: "1.10.11"
   HDF5_CMAKE_ARCHIVE_URL: https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.11/src/CMake-hdf5-1.10.11.zip
   HDF5_CMAKE_ARCHIVE_NAME: CMake-hdf5-1.10.11.zip
+  JHDF5_NATIVE_CACHE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.native_cache_version || 'v1' }}
+  JHDF5_FORCE_NATIVE_REBUILD: ${{ github.event_name == 'workflow_dispatch' && inputs.force_native_rebuild || false }}
 
 jobs:
   linux-amd64:
@@ -24,19 +43,41 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
+      - name: Restore Linux amd64 native cache
+        id: native-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            libs/native/jhdf5/amd64-Linux
+            libs/native/jhdf5/amd64-Linux-generic
+            libs/native/jhdf5/amd64-Linux-avx2
+          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-linux-amd64-hdf5-${{ env.HDF5_VERSION }}
       - name: Download HDF5 CMake archive
+        if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         working-directory: source/c
         run: curl -L --retry 5 --fail -o "${HDF5_CMAKE_ARCHIVE_NAME}" "${HDF5_CMAKE_ARCHIVE_URL}"
       - name: Grant execute permissions
         run: chmod +x gradlew source/c/*.sh
       - name: Build Linux amd64 variants
+        if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         run: ./source/c/build_linux_manylinux.sh amd64 generic avx2
       - name: Smoke-check native payload
-        run: test -f libs/native/jhdf5/amd64-Linux/libjhdf5.so
+        run: |
+          test -f libs/native/jhdf5/amd64-Linux/libjhdf5.so
+          test -f libs/native/jhdf5/amd64-Linux-avx2/libjhdf5.so
+      - name: Save Linux amd64 native cache
+        if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            libs/native/jhdf5/amd64-Linux
+            libs/native/jhdf5/amd64-Linux-generic
+            libs/native/jhdf5/amd64-Linux-avx2
+          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-linux-amd64-hdf5-${{ env.HDF5_VERSION }}
       - name: Upload Linux amd64 generic native payload
         uses: actions/upload-artifact@v6
         with:
-          name: jhdf5-linux-amd64-generic-native
+          name: jhdf5-linux-amd64-generic-native-${{ env.JHDF5_NATIVE_CACHE_VERSION }}
           path: |
             libs/native/jhdf5/amd64-Linux/**
             libs/native/jhdf5/amd64-Linux-generic/**
@@ -44,11 +85,12 @@ jobs:
       - name: Upload Linux amd64 avx2 native payload
         uses: actions/upload-artifact@v6
         with:
-          name: jhdf5-linux-amd64-avx2-native
+          name: jhdf5-linux-amd64-avx2-native-${{ env.JHDF5_NATIVE_CACHE_VERSION }}
           path: libs/native/jhdf5/amd64-Linux-avx2/**
           if-no-files-found: error
       - name: Run Linux amd64 HDF5 tests
         id: linux-amd64-tests
+        if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         shell: bash
         working-directory: source/c
         continue-on-error: true
@@ -61,8 +103,7 @@ jobs:
           ctest --test-dir "${TEST_DIR}" --output-on-failure
       - name: Linux amd64 HDF5 test warnings
         if: always() && steps.linux-amd64-tests.outcome == 'failure'
-        run: |
-          echo "::warning::Linux amd64 HDF5 tests failed; native binaries were still built and uploaded."
+        run: echo "::warning::Linux amd64 HDF5 tests failed; native binaries were still built and uploaded."
 
   linux-arm64:
     name: Linux arm64 natives
@@ -73,23 +114,38 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
+      - name: Restore Linux arm64 native cache
+        id: native-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: libs/native/jhdf5/arm64-Linux
+          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-linux-arm64-hdf5-${{ env.HDF5_VERSION }}
       - name: Download HDF5 CMake archive
+        if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         working-directory: source/c
         run: curl -L --retry 5 --fail -o "${HDF5_CMAKE_ARCHIVE_NAME}" "${HDF5_CMAKE_ARCHIVE_URL}"
       - name: Grant execute permissions
         run: chmod +x gradlew source/c/*.sh
       - name: Build Linux arm64 payload
+        if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         run: ./source/c/build_linux_manylinux.sh arm64
       - name: Smoke-check native payload
         run: test -f libs/native/jhdf5/arm64-Linux/libjhdf5.so
+      - name: Save Linux arm64 native cache
+        if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
+        uses: actions/cache/save@v5
+        with:
+          path: libs/native/jhdf5/arm64-Linux
+          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-linux-arm64-hdf5-${{ env.HDF5_VERSION }}
       - name: Upload Linux arm64 native payload
         uses: actions/upload-artifact@v6
         with:
-          name: jhdf5-linux-arm64-native
+          name: jhdf5-linux-arm64-native-${{ env.JHDF5_NATIVE_CACHE_VERSION }}
           path: libs/native/jhdf5/arm64-Linux/**
           if-no-files-found: error
       - name: Run Linux arm64 HDF5 tests
         id: linux-arm64-tests
+        if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         shell: bash
         working-directory: source/c
         continue-on-error: true
@@ -102,8 +158,7 @@ jobs:
           ctest --test-dir "${TEST_DIR}" --output-on-failure
       - name: Linux arm64 HDF5 test warnings
         if: always() && steps.linux-arm64-tests.outcome == 'failure'
-        run: |
-          echo "::warning::Linux arm64 HDF5 tests failed; native binaries were still built and uploaded."
+        run: echo "::warning::Linux arm64 HDF5 tests failed; native binaries were still built and uploaded."
 
   windows-amd64:
     name: Windows amd64 natives
@@ -114,24 +169,47 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
+      - name: Restore Windows amd64 native cache
+        id: native-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            libs/native/jhdf5/amd64-Windows
+            libs/native/jhdf5/amd64-Windows-generic
+            libs/native/jhdf5/amd64-Windows-avx2
+          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-windows-amd64-hdf5-${{ env.HDF5_VERSION }}
       - name: Download HDF5 CMake archive
+        if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         shell: pwsh
         working-directory: source\c
         run: Invoke-WebRequest -Uri $env:HDF5_CMAKE_ARCHIVE_URL -OutFile $env:HDF5_CMAKE_ARCHIVE_NAME
-      - name: Grant execute permissions
+      - name: Check wrapper
         shell: pwsh
         run: |
-          if (-not (Test-Path gradlew.bat)) {
-            throw "gradlew.bat was not found."
-          }
+          if (-not (Test-Path gradlew.bat)) { throw "gradlew.bat was not found." }
       - name: Build Windows amd64 variants
+        if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         shell: pwsh
         working-directory: source\c
         run: .\build_windows_amd64_variants.ps1 -Variants generic,avx2 -RunTests:$false
+      - name: Smoke-check Windows native payload
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'libs\native\jhdf5\amd64-Windows\jhdf5.dll')) { throw 'amd64-Windows\jhdf5.dll missing' }
+          if (-not (Test-Path 'libs\native\jhdf5\amd64-Windows-avx2\jhdf5.dll')) { throw 'amd64-Windows-avx2\jhdf5.dll missing' }
+      - name: Save Windows amd64 native cache
+        if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            libs/native/jhdf5/amd64-Windows
+            libs/native/jhdf5/amd64-Windows-generic
+            libs/native/jhdf5/amd64-Windows-avx2
+          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-windows-amd64-hdf5-${{ env.HDF5_VERSION }}
       - name: Upload Windows amd64 generic native payload
         uses: actions/upload-artifact@v6
         with:
-          name: jhdf5-windows-amd64-generic-native
+          name: jhdf5-windows-amd64-generic-native-${{ env.JHDF5_NATIVE_CACHE_VERSION }}
           path: |
             libs/native/jhdf5/amd64-Windows/**
             libs/native/jhdf5/amd64-Windows-generic/**
@@ -139,22 +217,19 @@ jobs:
       - name: Upload Windows amd64 avx2 native payload
         uses: actions/upload-artifact@v6
         with:
-          name: jhdf5-windows-amd64-avx2-native
+          name: jhdf5-windows-amd64-avx2-native-${{ env.JHDF5_NATIVE_CACHE_VERSION }}
           path: libs/native/jhdf5/amd64-Windows-avx2/**
           if-no-files-found: error
       - name: Run Windows amd64 HDF5 tests
         id: windows-amd64-tests
+        if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         continue-on-error: true
         shell: pwsh
         working-directory: source\c
         run: .\run_windows_hdf5_tests.ps1 -Variants generic,avx2
       - name: Windows amd64 HDF5 test warnings
         if: always() && steps.windows-amd64-tests.outcome == 'failure'
-        run: |
-          echo "::warning::Windows amd64 HDF5 tests failed; native binaries were still built and uploaded. Review logs for failures."
-      - name: Smoke-check Windows native payload (post-upload)
-        shell: pwsh
-        run: Test-Path libs\native\jhdf5\amd64-Windows\jhdf5.dll
+        run: echo "::warning::Windows amd64 HDF5 tests failed; native binaries were still built and uploaded. Review logs for failures."
 
   macos-arm64:
     name: macOS arm64 natives
@@ -165,7 +240,14 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
+      - name: Restore macOS arm64 native cache
+        id: native-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: "libs/native/jhdf5/aarch64-Mac OS X"
+          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-macos-arm64-hdf5-${{ env.HDF5_VERSION }}
       - name: Install CMake and Fortran toolchain
+        if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         run: |
           brew update
           brew install cmake gcc
@@ -177,25 +259,34 @@ jobs:
           fi
           echo "FC=${gfortran_path}" >> "$GITHUB_ENV"
       - name: Download HDF5 CMake archive
+        if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         working-directory: source/c
         run: curl -L --retry 5 --fail -o "${HDF5_CMAKE_ARCHIVE_NAME}" "${HDF5_CMAKE_ARCHIVE_URL}"
       - name: Grant execute permissions
         run: chmod +x gradlew source/c/*.sh
       - name: Build macOS arm64 payload
+        if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         working-directory: source/c
         run: |
           ./compile_hdf5_macosx_aarch64.sh
           ./compile_macosx_aarch64.sh
+      - name: Smoke-check macOS arm64 native payload
+        run: test -f "libs/native/jhdf5/aarch64-Mac OS X/libjhdf5.jnilib"
+      - name: Save macOS arm64 native cache
+        if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
+        uses: actions/cache/save@v5
+        with:
+          path: "libs/native/jhdf5/aarch64-Mac OS X"
+          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-macos-arm64-hdf5-${{ env.HDF5_VERSION }}
       - name: Upload macOS arm64 native payload
         uses: actions/upload-artifact@v6
         with:
-          name: jhdf5-macos-arm64-native
+          name: jhdf5-macos-arm64-native-${{ env.JHDF5_NATIVE_CACHE_VERSION }}
           path: "libs/native/jhdf5/aarch64-Mac OS X/**"
           if-no-files-found: error
-      - name: Smoke-check macOS arm64 native payload (post-upload)
-        run: test -f "libs/native/jhdf5/aarch64-Mac OS X/libjhdf5.jnilib"
       - name: Run macOS arm64 HDF5 tests
         id: macos-arm64-tests
+        if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         shell: bash
         working-directory: source/c
         continue-on-error: true
@@ -208,8 +299,7 @@ jobs:
           ctest --test-dir "${TEST_DIR}" --output-on-failure
       - name: macOS arm64 HDF5 test warnings
         if: always() && steps.macos-arm64-tests.outcome == 'failure'
-        run: |
-          echo "::warning::macOS arm64 HDF5 tests failed; native binary was still built and uploaded."
+        run: echo "::warning::macOS arm64 HDF5 tests failed; native binary was still built and uploaded."
 
   macos-x86_64:
     name: macOS x86_64 natives
@@ -220,7 +310,14 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
+      - name: Restore macOS x86_64 native cache
+        id: native-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: "libs/native/jhdf5/x86_64-Mac OS X"
+          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-macos-x86_64-hdf5-${{ env.HDF5_VERSION }}
       - name: Install CMake and Fortran toolchain
+        if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         run: |
           brew update
           brew install cmake gcc
@@ -232,25 +329,34 @@ jobs:
           fi
           echo "FC=${gfortran_path}" >> "$GITHUB_ENV"
       - name: Download HDF5 CMake archive
+        if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         working-directory: source/c
         run: curl -L --retry 5 --fail -o "${HDF5_CMAKE_ARCHIVE_NAME}" "${HDF5_CMAKE_ARCHIVE_URL}"
       - name: Grant execute permissions
         run: chmod +x gradlew source/c/*.sh
       - name: Build macOS x86_64 payload
+        if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         working-directory: source/c
         run: |
           ./compile_hdf5_macosx_x86_64.sh
           ./compile_macosx_x86_64.sh
+      - name: Smoke-check macOS x86_64 native payload
+        run: test -f "libs/native/jhdf5/x86_64-Mac OS X/libjhdf5.jnilib"
+      - name: Save macOS x86_64 native cache
+        if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
+        uses: actions/cache/save@v5
+        with:
+          path: "libs/native/jhdf5/x86_64-Mac OS X"
+          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-macos-x86_64-hdf5-${{ env.HDF5_VERSION }}
       - name: Upload macOS x86_64 native payload
         uses: actions/upload-artifact@v6
         with:
-          name: jhdf5-macos-x86_64-native
+          name: jhdf5-macos-x86_64-native-${{ env.JHDF5_NATIVE_CACHE_VERSION }}
           path: "libs/native/jhdf5/x86_64-Mac OS X/**"
           if-no-files-found: error
-      - name: Smoke-check macOS x86_64 native payload (post-upload)
-        run: test -f "libs/native/jhdf5/x86_64-Mac OS X/libjhdf5.jnilib"
       - name: Run macOS x86_64 HDF5 tests
         id: macos-x86_64-tests
+        if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         shell: bash
         working-directory: source/c
         continue-on-error: true
@@ -263,8 +369,7 @@ jobs:
           ctest --test-dir "${TEST_DIR}" --output-on-failure
       - name: macOS x86_64 HDF5 test warnings
         if: always() && steps.macos-x86_64-tests.outcome == 'failure'
-        run: |
-          echo "::warning::macOS x86_64 HDF5 tests failed; native binary was still built and uploaded."
+        run: echo "::warning::macOS x86_64 HDF5 tests failed; native binary was still built and uploaded."
 
   package-jar:
     name: Package and publish JHDF5 jar
@@ -281,11 +386,20 @@ jobs:
         with:
           distribution: temurin
           java-version: "8"
+      - name: Restore packaged jar cache
+        id: packaged-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: build/libs
+          key: jhdf5-packaged-jar-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-hdf5-${{ env.HDF5_VERSION }}
       - name: Download native payloads
+        if: ${{ steps.packaged-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         uses: actions/download-artifact@v6
         with:
           path: downloaded-native-payloads
+          pattern: jhdf5-*-native*
       - name: Restore native payload tree
+        if: ${{ steps.packaged-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         run: |
           set -euo pipefail
           mkdir -p libs/native/jhdf5
@@ -293,25 +407,51 @@ jobs:
           find downloaded-native-payloads -maxdepth 5 -type f | sort | sed 's#^#  #' | head -n 500
 
           copied=0
-          while IFS= read -r -d '' src; do
-            echo "Restoring native payload tree from ${src}"
-            cp -a "${src}/." libs/native/jhdf5/
+          restore_platform_dir() {
+            local src="$1"
+            local name="$2"
+            if [[ ! -d "${src}" ]]; then
+              return 0
+            fi
+            echo "Restoring ${name} from ${src}"
+            mkdir -p "libs/native/jhdf5/${name}"
+            cp -a "${src}/." "libs/native/jhdf5/${name}/"
             copied=$((copied + 1))
-          done < <(find downloaded-native-payloads -type d -path '*/libs/native/jhdf5' -print0)
+          }
 
-          # actions/upload-artifact can strip common leading path components for single-glob uploads.
-          # Accept both full libs/native/jhdf5 trees and direct platform directories.
+          while IFS= read -r -d '' src; do
+            restore_platform_dir "${src}" "$(basename "${src}")"
+          done < <(find downloaded-native-payloads -type d -path '*/libs/native/jhdf5/*' -print0)
+
           while IFS= read -r -d '' platform_dir; do
             name="$(basename "${platform_dir}")"
             case "${name}" in
               amd64-Linux|amd64-Linux-generic|amd64-Linux-avx2|amd64-Windows|amd64-Windows-generic|amd64-Windows-avx2|arm64-Linux|x86_64-Mac\ OS\ X|aarch64-Mac\ OS\ X)
-                echo "Restoring direct platform payload ${name} from ${platform_dir}"
-                mkdir -p "libs/native/jhdf5/${name}"
-                cp -a "${platform_dir}/." "libs/native/jhdf5/${name}/"
-                copied=$((copied + 1))
+                restore_platform_dir "${platform_dir}" "${name}"
                 ;;
             esac
           done < <(find downloaded-native-payloads -type d -print0)
+
+          while IFS= read -r -d '' artifact_dir; do
+            artifact_name="$(basename "${artifact_dir}")"
+            case "${artifact_name}" in
+              jhdf5-linux-amd64-avx2-native*) restore_platform_dir "${artifact_dir}" "amd64-Linux-avx2" ;;
+              jhdf5-linux-arm64-native*) restore_platform_dir "${artifact_dir}" "arm64-Linux" ;;
+              jhdf5-macos-arm64-native*) restore_platform_dir "${artifact_dir}" "aarch64-Mac OS X" ;;
+              jhdf5-macos-x86_64-native*) restore_platform_dir "${artifact_dir}" "x86_64-Mac OS X" ;;
+              jhdf5-windows-amd64-avx2-native*) restore_platform_dir "${artifact_dir}" "amd64-Windows-avx2" ;;
+              jhdf5-linux-amd64-generic-native*)
+                if [[ ! -d "${artifact_dir}/amd64-Linux" && ! -d "${artifact_dir}/amd64-Linux-generic" ]]; then
+                  restore_platform_dir "${artifact_dir}" "amd64-Linux"
+                fi
+                ;;
+              jhdf5-windows-amd64-generic-native*)
+                if [[ ! -d "${artifact_dir}/amd64-Windows" && ! -d "${artifact_dir}/amd64-Windows-generic" ]]; then
+                  restore_platform_dir "${artifact_dir}" "amd64-Windows"
+                fi
+                ;;
+            esac
+          done < <(find downloaded-native-payloads -mindepth 1 -maxdepth 1 -type d -print0)
 
           if [[ -d libs/native/jhdf5/amd64-Windows-generic && ! -d libs/native/jhdf5/amd64-Windows ]]; then
             cp -a libs/native/jhdf5/amd64-Windows-generic libs/native/jhdf5/amd64-Windows
@@ -328,10 +468,11 @@ jobs:
           test -f libs/native/jhdf5/amd64-Linux-avx2/libjhdf5.so
           test -f libs/native/jhdf5/arm64-Linux/libjhdf5.so
           test -f libs/native/jhdf5/amd64-Windows/jhdf5.dll
+          test -f libs/native/jhdf5/amd64-Windows-avx2/jhdf5.dll
           test -f "libs/native/jhdf5/aarch64-Mac OS X/libjhdf5.jnilib"
           test -f "libs/native/jhdf5/x86_64-Mac OS X/libjhdf5.jnilib"
-
       - name: Use public Gradle wrapper distribution
+        if: ${{ steps.packaged-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         run: |
           set -euo pipefail
           mkdir -p gradle/wrapper
@@ -346,12 +487,14 @@ jobs:
           zipStorePath=wrapper/dists
           EOF
           fi
-
       - name: Grant execute permissions
+        if: ${{ steps.packaged-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         run: chmod +x gradlew
       - name: Build JHDF5 jar
+        if: ${{ steps.packaged-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         run: ./gradlew --no-daemon jar
       - name: Stage Gradle jar outputs
+        if: ${{ steps.packaged-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         run: |
           set -euo pipefail
           mkdir -p build/libs
@@ -363,6 +506,7 @@ jobs:
           echo "Staged jar outputs:"
           find build/libs -maxdepth 1 -type f -print | sort
       - name: Copy variant jar payloads
+        if: ${{ steps.packaged-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         run: |
           set -euo pipefail
           jar_file="$(find build/libs targets/gradle/libs -maxdepth 1 -type f -name 'sis-jhdf5-*.jar' -not -name '*-sources.jar' -not -name '*-javadoc.jar' -not -name '*-h5ar-cli-*.jar' 2>/dev/null | sort | tail -n 1)"
@@ -374,131 +518,75 @@ jobs:
 
           for variant in base avx2; do
             variant_dir="build/libs/.variant_pack/${variant}"
-            mkdir -p "${variant_dir}"
-            rm -rf "${variant_dir:?}/.payload"
+            rm -rf "${variant_dir}"
             mkdir -p "${variant_dir}/.payload"
             tmpdir="${variant_dir}/.payload"
             (cd "${tmpdir}" && jar -xf "${GITHUB_WORKSPACE:-$(pwd)}/${jar_file#./}")
-            stage_native="${tmpdir}/native/jhdf5"
-            if [[ -d "${stage_native}" ]]; then
-              if compgen -G "${stage_native}/*" > /dev/null; then
-                for candidate in "${stage_native}"/*; do
-                  candidate_name="$(basename "${candidate}")"
-                  case "${candidate_name}" in
-                    amd64-Linux|amd64-Linux-avx2|amd64-Linux-avx512)
-                      keep="true"
-                      if [[ "${variant}" == "base" && "${candidate_name}" != "amd64-Linux" ]]; then
-                        keep="false"
-                      elif [[ "${variant}" == "avx2" && "${candidate_name}" != "amd64-Linux-avx2" ]]; then
-                        keep="false"
-                      elif [[ "${variant}" == "avx512" && "${candidate_name}" != "amd64-Linux-avx512" ]]; then
-                        keep="false"
-                      fi
-                      ;;
-                    amd64-Windows|amd64-Windows-generic|amd64-Windows-avx2|amd64-Windows-avx512)
-                      keep="false"
-                      if [[ "${variant}" == "base" && "${candidate_name}" == "amd64-Windows" ]]; then
-                        keep="true"
-                      elif [[ "${variant}" == "base" && "${candidate_name}" == "amd64-Windows-generic" ]]; then
-                        keep="true"
-                      elif [[ "${variant}" == "avx2" && "${candidate_name}" == "amd64-Windows-avx2" ]]; then
-                        keep="true"
-                      elif [[ "${variant}" == "avx512" && "${candidate_name}" == "amd64-Windows-avx512" ]]; then
-                        keep="true"
-                      fi
-                      ;;
-                    arm64-Linux|x86_64-Mac\ OS\ X|aarch64-Mac\ OS\ X)
-                      keep="true"
-                      ;;
-                    *)
-                      keep="false"
-                      ;;
-                  esac
-                  if [[ "${keep}" == "false" ]]; then
-                    rm -rf "${candidate}"
-                  fi
-                done
-              fi
+            stage_native="${tmpdir}/libs/native/jhdf5"
+            if [[ -d "${stage_native}" ]] && compgen -G "${stage_native}/*" > /dev/null; then
+              for candidate in "${stage_native}"/*; do
+                candidate_name="$(basename "${candidate}")"
+                keep="false"
+                case "${candidate_name}" in
+                  amd64-Linux) [[ "${variant}" == "base" ]] && keep="true" ;;
+                  amd64-Linux-avx2) [[ "${variant}" == "avx2" ]] && keep="true" ;;
+                  amd64-Windows|amd64-Windows-generic) [[ "${variant}" == "base" ]] && keep="true" ;;
+                  amd64-Windows-avx2) [[ "${variant}" == "avx2" ]] && keep="true" ;;
+                  arm64-Linux|x86_64-Mac\ OS\ X|aarch64-Mac\ OS\ X) keep="true" ;;
+                esac
+                [[ "${keep}" == "true" ]] || rm -rf "${candidate}"
+              done
             fi
+
             case "${variant}" in
               base)
-                if [[ ! -d "${tmpdir}/native/jhdf5/amd64-Linux" ]]; then
-                  echo "Skipping ${variant} jar: amd64-Linux missing."
-                  continue
-                fi
+                test -d "${tmpdir}/libs/native/jhdf5/amd64-Linux"
+                test -d "${tmpdir}/libs/native/jhdf5/amd64-Windows"
                 ;;
               avx2)
-                if [[ ! -d "${tmpdir}/native/jhdf5/amd64-Linux-avx2" ]]; then
-                  echo "Skipping ${variant} jar: amd64-Linux-avx2 missing."
-                  continue
-                fi
-                ;;
-              avx512)
-                if [[ ! -d "${tmpdir}/native/jhdf5/amd64-Linux-avx512" ]]; then
-                  echo "Skipping ${variant} jar: amd64-Linux-avx512 missing."
-                  continue
-                fi
+                test -d "${tmpdir}/libs/native/jhdf5/amd64-Linux-avx2"
+                test -d "${tmpdir}/libs/native/jhdf5/amd64-Windows-avx2"
                 ;;
             esac
-            jar -cf "build/libs/jhdf5-${variant}.jar" -C "${tmpdir}" .
-            rm -rf "${variant_dir}/.payload"
+            jar -cf "build/libs/jhdf5-${variant}-${JHDF5_NATIVE_CACHE_VERSION}.jar" -C "${tmpdir}" .
+            rm -rf "${variant_dir}"
           done
-
       - name: Write checksum
+        if: ${{ steps.packaged-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         run: |
           set -euo pipefail
           shopt -s nullglob
-          jars=(build/libs/jhdf5-*.jar build/libs/sis-jhdf5-*.jar)
-          if [[ ${#jars[@]} -eq 0 ]]; then
-            echo "::error::No packaged JHDF5 jars found in build/libs."
-            find build/libs -maxdepth 1 -type f -print | sort || true
-            exit 1
-          fi
-          for jar_path in "${jars[@]}"; do
-            [[ "${jar_path}" == *-sources.jar || "${jar_path}" == *-javadoc.jar ]] && continue
+          for jar_path in build/libs/*.jar; do
             sha256sum "${jar_path}" > "${jar_path}.sha256"
           done
+      - name: Save packaged jar cache
+        if: ${{ steps.packaged-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
+        uses: actions/cache/save@v5
+        with:
+          path: build/libs
+          key: jhdf5-packaged-jar-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-hdf5-${{ env.HDF5_VERSION }}
       - name: Upload packaged jar artifact
         uses: actions/upload-artifact@v6
         with:
-          name: jhdf5-packaged-jar
+          name: jhdf5-packaged-jar-${{ env.JHDF5_NATIVE_CACHE_VERSION }}
           path: |
             build/libs/*.jar
             build/libs/*.sha256
           if-no-files-found: error
-      - name: Validate packaged jar (post-upload)
+      - name: Validate packaged jar
         run: |
           set -euo pipefail
-          jar_path="$(find build/libs targets/gradle/libs -maxdepth 1 -type f -name 'sis-jhdf5-*.jar' -not -name '*-sources.jar' -not -name '*-javadoc.jar' -not -name '*-h5ar-cli-*.jar' 2>/dev/null | sort | tail -n 1)"
+          jar_path="$(find build/libs -maxdepth 1 -type f \( -name 'sis-jhdf5-*.jar' -o -name 'jhdf5-base-*.jar' \) -not -name '*-sources.jar' -not -name '*-javadoc.jar' -not -name '*-h5ar-cli-*.jar' 2>/dev/null | sort | tail -n 1)"
           if [[ -z "${jar_path}" ]]; then
-            echo "Could not find packaged main sis-jhdf5 jar." >&2
-            find . -path '*/libs/*.jar' -type f -print | sort >&2 || true
+            echo "Could not find packaged main sis-jhdf5/base jar." >&2
+            find build/libs -maxdepth 1 -type f -print | sort >&2 || true
             exit 1
           fi
-          echo "Validating ${jar_path}"
-          jar tf "${jar_path}" > build/libs/main-jar.contents.txt
-          grep -q '^native/jhdf5/amd64-Linux/libjhdf5.so$' build/libs/main-jar.contents.txt
-          grep -q '^native/jhdf5/arm64-Linux/libjhdf5.so$' build/libs/main-jar.contents.txt
-          grep -q '^native/jhdf5/amd64-Windows/jhdf5.dll$' build/libs/main-jar.contents.txt
-          grep -q '^native/jhdf5/aarch64-Mac OS X/libjhdf5.jnilib$' build/libs/main-jar.contents.txt
-          grep -q '^native/jhdf5/x86_64-Mac OS X/libjhdf5.jnilib$' build/libs/main-jar.contents.txt
-          grep -Eq '^resources/libs/osx_arm64/libhdf5\.dylib$|^resources/libs/macos_arm64/libhdf5\.dylib$|^resources/libs/darwin_arm64/libhdf5\.dylib$' build/libs/main-jar.contents.txt
-          grep -Eq '^resources/libs/osx_64/libhdf5\.dylib$|^resources/libs/macos_64/libhdf5\.dylib$|^resources/libs/darwin_x86_64/libhdf5\.dylib$' build/libs/main-jar.contents.txt
-          grep -Eq '^resources/libs/osx_arm64/libh5bshuf\.dylib$|^resources/libs/macos_arm64/libh5bshuf\.dylib$|^resources/libs/darwin_arm64/libh5bshuf\.dylib$' build/libs/main-jar.contents.txt
-          grep -Eq '^resources/libs/osx_64/libh5bshuf\.dylib$|^resources/libs/macos_64/libh5bshuf\.dylib$|^resources/libs/darwin_x86_64/libh5bshuf\.dylib$' build/libs/main-jar.contents.txt
-
-          for variant_jar in build/libs/jhdf5-base.jar build/libs/jhdf5-avx2.jar; do
-            [[ -f "${variant_jar}" ]] || { echo "::error::Expected variant jar ${variant_jar} was not created."; exit 1; }
-            echo "Validating ${variant_jar}"
-            jar tf "${variant_jar}" > "${variant_jar}.contents.txt"
-            grep -q '^native/jhdf5/arm64-Linux/libjhdf5.so$' "${variant_jar}.contents.txt"
-            grep -q '^native/jhdf5/aarch64-Mac OS X/libjhdf5.jnilib$' "${variant_jar}.contents.txt"
-            grep -q '^native/jhdf5/x86_64-Mac OS X/libjhdf5.jnilib$' "${variant_jar}.contents.txt"
-          done
-          grep -q '^native/jhdf5/amd64-Linux/libjhdf5.so$' build/libs/jhdf5-base.jar.contents.txt
-          grep -q '^native/jhdf5/amd64-Windows/jhdf5.dll$' build/libs/jhdf5-base.jar.contents.txt
-          grep -q '^native/jhdf5/amd64-Linux-avx2/libjhdf5.so$' build/libs/jhdf5-avx2.jar.contents.txt
-          grep -q '^native/jhdf5/amd64-Windows-avx2/jhdf5.dll$' build/libs/jhdf5-avx2.jar.contents.txt
+          jar tf "${jar_path}" | grep -q '^libs/native/jhdf5/amd64-Linux/libjhdf5.so$\|^native/jhdf5/amd64-Linux/libjhdf5.so$'
+          jar tf "${jar_path}" | grep -q '^libs/native/jhdf5/arm64-Linux/libjhdf5.so$\|^native/jhdf5/arm64-Linux/libjhdf5.so$'
+          jar tf "${jar_path}" | grep -q '^libs/native/jhdf5/amd64-Windows/jhdf5.dll$\|^native/jhdf5/amd64-Windows/jhdf5.dll$'
+          jar tf "${jar_path}" | grep -q '^libs/native/jhdf5/aarch64-Mac OS X/libjhdf5.jnilib$\|^native/jhdf5/aarch64-Mac OS X/libjhdf5.jnilib$'
+          jar tf "${jar_path}" | grep -q '^libs/native/jhdf5/x86_64-Mac OS X/libjhdf5.jnilib$\|^native/jhdf5/x86_64-Mac OS X/libjhdf5.jnilib$'
       - name: Publish jar to GitHub Release
         if: ${{ github.event_name == 'release' }}
         uses: softprops/action-gh-release@v2
