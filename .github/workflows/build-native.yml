@@ -280,7 +280,7 @@ jobs:
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: "8"
       - name: Download native payloads
         uses: actions/download-artifact@v6
         with:
@@ -293,20 +293,48 @@ jobs:
               cp -a "${src}/." libs/native/jhdf5/
             done
 
+      - name: Use public Gradle wrapper distribution
+        run: |
+          set -euo pipefail
+          mkdir -p gradle/wrapper
+          if [[ -f gradle/wrapper/gradle-wrapper.properties ]]; then
+            sed -i.bak 's#^distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-4.9-all.zip#' gradle/wrapper/gradle-wrapper.properties
+          else
+            cat > gradle/wrapper/gradle-wrapper.properties <<'EOF'
+distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+distributionUrl=https\://services.gradle.org/distributions/gradle-4.9-all.zip
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
+EOF
+          fi
+
       - name: Grant execute permissions
         run: chmod +x gradlew
       - name: Build JHDF5 jar
-        run: ./gradlew jar
+        run: ./gradlew --no-daemon jar
+      - name: Stage Gradle jar outputs
+        run: |
+          set -euo pipefail
+          mkdir -p build/libs
+          for dir in targets/gradle/libs build/libs; do
+            if [[ -d "${dir}" ]]; then
+              find "${dir}" -maxdepth 1 -type f \( -name '*.jar' -o -name '*.pom' \) -exec cp -f {} build/libs/ \;
+            fi
+          done
+          echo "Staged jar outputs:"
+          find build/libs -maxdepth 1 -type f -print | sort
       - name: Copy variant jar payloads
         run: |
           set -euo pipefail
-          jar_file="$(find build/libs -maxdepth 1 -type f -name 'sis-jhdf5-*.jar' -not -name '*-sources.jar' -not -name '*-javadoc.jar' -not -name '*-h5ar-cli-*.jar' | sort | tail -n 1)"
+          jar_file="$(find build/libs targets/gradle/libs -maxdepth 1 -type f -name 'sis-jhdf5-*.jar' -not -name '*-sources.jar' -not -name '*-javadoc.jar' -not -name '*-h5ar-cli-*.jar' 2>/dev/null | sort | tail -n 1)"
           if [[ -z "${jar_file}" ]]; then
-            echo "Could not find primary sis-jhdf5 jar in build/libs" >&2
+            echo "Could not find primary sis-jhdf5 jar in build/libs or targets/gradle/libs" >&2
+            find . -path '*/libs/*.jar' -type f -print | sort >&2 || true
             exit 1
           fi
 
-          for variant in base avx2 avx512; do
+          for variant in base avx2; do
             variant_dir="build/libs/.variant_pack/${variant}"
             mkdir -p "${variant_dir}"
             rm -rf "${variant_dir:?}/.payload"
@@ -393,9 +421,10 @@ jobs:
           if-no-files-found: error
       - name: Validate packaged jar (post-upload)
         run: |
-          jar_path="$(find build/libs -maxdepth 1 -type f -name 'sis-jhdf5-*.jar' -not -name '*-sources.jar' -not -name '*-javadoc.jar' -not -name '*-h5ar-cli-*.jar' | sort | tail -n 1)"
+          jar_path="$(find build/libs targets/gradle/libs -maxdepth 1 -type f -name 'sis-jhdf5-*.jar' -not -name '*-sources.jar' -not -name '*-javadoc.jar' -not -name '*-h5ar-cli-*.jar' 2>/dev/null | sort | tail -n 1)"
           if [[ -z "${jar_path}" ]]; then
             echo "Could not find packaged main sis-jhdf5 jar." >&2
+            find . -path '*/libs/*.jar' -type f -print | sort >&2 || true
             exit 1
           fi
           jar tf "${jar_path}" | grep -q '^native/jhdf5/amd64-Linux/libjhdf5.so$'
