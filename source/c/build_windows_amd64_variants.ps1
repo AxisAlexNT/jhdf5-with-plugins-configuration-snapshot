@@ -266,6 +266,46 @@ function Resolve-BuildBinaryDir {
   return (Join-Path $BuildRoot "bin")
 }
 
+
+function Resolve-Hdf5BuildRoot {
+  param(
+    [string] $SourceDir,
+    [string] $PresetName
+  )
+
+  $preparedRoot = Split-Path -Parent $SourceDir
+  $candidateRoots = @(
+    (Join-Path $SourceDir "build110\$PresetName"),
+    (Join-Path $preparedRoot "build110\$PresetName"),
+    (Join-Path $SourceDir "build\$PresetName"),
+    (Join-Path $preparedRoot "build\$PresetName")
+  )
+
+  foreach ($candidate in $candidateRoots) {
+    if (Test-Path $candidate) {
+      return $candidate
+    }
+  }
+
+  $discovered = Get-ChildItem $preparedRoot -Directory -Recurse -ErrorAction SilentlyContinue |
+    Where-Object {
+      $_.Name -eq $PresetName -and
+      ($_.FullName -match '\\build110\\' -or $_.FullName -match '\\build\\')
+    } |
+    Sort-Object FullName |
+    Select-Object -First 1
+
+  if ($discovered) {
+    return $discovered.FullName
+  }
+
+  Write-Host "[jhdf5] Could not find build root for preset '$PresetName'. Checked:"
+  foreach ($candidate in $candidateRoots) {
+    Write-Host "[jhdf5]   $candidate"
+  }
+  return $candidateRoots[1]
+}
+
 function Resolve-ChildBinaryDirs {
   param([string] $BuildRoot)
 
@@ -351,10 +391,11 @@ foreach ($variant in $Variants) {
   }
 
   $buildDirName = Resolve-TestBuildPreset -Preset $env:CMAKE_PRESET
-  $buildRoot = Join-Path $sourceDir "build110\$buildDirName"
+  $buildRoot = Resolve-Hdf5BuildRoot -SourceDir $sourceDir -PresetName $buildDirName
+  Write-Host "[jhdf5] Using HDF5 build root: $buildRoot"
   $binaryDirs = Resolve-ChildBinaryDirs -BuildRoot $buildRoot
   if ($binaryDirs.Count -eq 0) {
-    throw "No build directories found under $buildRoot"
+    throw "No binary directories or deployable DLLs found under $buildRoot"
   }
 
   $binaryDir = $binaryDirs[0]
