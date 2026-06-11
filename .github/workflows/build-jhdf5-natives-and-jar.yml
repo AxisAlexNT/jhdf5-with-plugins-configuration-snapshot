@@ -513,10 +513,17 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p build/libs
+          # Gradle sometimes writes directly to build/libs and sometimes to
+          # targets/gradle/libs.  Do not copy a file onto itself and do not let
+          # a missing optional directory make this step fail under set -e.
           for dir in targets/gradle/libs build/libs; do
-            if [[ -d "${dir}" ]]; then
-              find "${dir}" -maxdepth 1 -type f \( -name '*.jar' -o -name '*.pom' \) -exec cp -f {} build/libs/ \;
-            fi
+            [[ -d "${dir}" ]] || continue
+            while IFS= read -r -d '' artifact; do
+              dest="build/libs/$(basename "${artifact}")"
+              if [[ "$(realpath "${artifact}")" != "$(realpath -m "${dest}")" ]]; then
+                cp -f "${artifact}" "${dest}"
+              fi
+            done < <(find "${dir}" -maxdepth 1 -type f \( -name '*.jar' -o -name '*.pom' \) -print0)
           done
           echo "Staged jar outputs:"
           find build/libs -maxdepth 1 -type f -print | sort
@@ -524,48 +531,91 @@ jobs:
         if: ${{ steps.packaged-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         run: |
           set -euo pipefail
-          jar_file="$(find build/libs targets/gradle/libs -maxdepth 1 -type f -name 'sis-jhdf5-*.jar' -not -name '*-sources.jar' -not -name '*-javadoc.jar' -not -name '*-h5ar-cli-*.jar' 2>/dev/null | sort | tail -n 1)"
-          if [[ -z "${jar_file}" ]]; then
-            echo "Could not find primary sis-jhdf5 jar in build/libs or targets/gradle/libs" >&2
-            find . -path '*/libs/*.jar' -type f -print | sort >&2 || true
+          search_dirs=()
+          [[ -d build/libs ]] && search_dirs+=(build/libs)
+          [[ -d targets/gradle/libs ]] && search_dirs+=(targets/gradle/libs)
+          if [[ ${#search_dirs[@]} -eq 0 ]]; then
+            echo "::error::Neither build/libs nor targets/gradle/libs exists after Gradle jar task." >&2
             exit 1
           fi
 
-          for variant in base avx2; do
-            variant_dir="build/libs/.variant_pack/${variant}"
+          mapfile -t jar_candidates < <(
+            find "${search_dirs[@]}" -maxdepth 1 -type f               -name 'sis-jhdf5-*.jar'               -not -name '*-sources.jar'               -not -name '*-javadoc.jar'               -not -name '*-h5ar-cli-*.jar'               -print | sort
+          )
+          if [[ ${#jar_candidates[@]} -eq 0 ]]; then
+            echo "::error::Could not find primary sis-jhdf5 jar in existing Gradle output directories: ${search_dirs[*]}" >&2
+            find . -path '*/libs/*.jar' -type f -print | sort >&2 || true
+            exit 1
+          fi
+          jar_file="${jar_candidates[-1]}"
+          echo "Using primary JHDF5 jar: ${jar_file}"
+
+          pack_variant() {
+            local variant="$1"
+            local out_name="$2"
+            local variant_dir="build/libs/.variant_pack/${variant}"
+            local tmpdir="${variant_dir}/.payload"
             rm -rf "${variant_dir}"
-            mkdir -p "${variant_dir}/.payload"
-            tmpdir="${variant_dir}/.payload"
+            mkdir -p "${tmpdir}"
+
             (cd "${tmpdir}" && jar -xf "${GITHUB_WORKSPACE:-$(pwd)}/${jar_file#./}")
-            stage_native="${tmpdir}/libs/native/jhdf5"
-            if [[ -d "${stage_native}" ]] && compgen -G "${stage_native}/*" > /dev/null; then
-              for candidate in "${stage_native}"/*; do
-                candidate_name="$(basename "${candidate}")"
-                keep="false"
-                case "${candidate_name}" in
-                  amd64-Linux) [[ "${variant}" == "base" ]] && keep="true" ;;
-                  amd64-Linux-avx2) [[ "${variant}" == "avx2" ]] && keep="true" ;;
-                  amd64-Windows|amd64-Windows-generic) [[ "${variant}" == "base" ]] && keep="true" ;;
-                  amd64-Windows-avx2) [[ "${variant}" == "avx2" ]] && keep="true" ;;
-                  arm64-Linux|x86_64-Mac\ OS\ X|aarch64-Mac\ OS\ X) keep="true" ;;
-                esac
-                [[ "${keep}" == "true" ]] || rm -rf "${candidate}"
-              done
+
+            # Be defensive: some legacy Gradle configurations do not place the
+            # restored native tree into the jar automatically.  The workflow has
+            # already reconstructed libs/native/jhdf5, so copy it explicitly.
+            if [[ -d libs/native/jhdf5 ]]; then
+              mkdir -p "${tmpdir}/libs/native"
+              rm -rf "${tmpdir}/libs/native/jhdf5"
+              cp -a libs/native/jhdf5 "${tmpdir}/libs/native/jhdf5"
             fi
+
+            local stage_native="${tmpdir}/libs/native/jhdf5"
+            if [[ ! -d "${stage_native}" ]]; then
+              echo "::error::Jar payload has no libs/native/jhdf5 tree after explicit native copy." >&2
+              exit 1
+            fi
+
+            for candidate in "${stage_native}"/*; do
+              [[ -e "${candidate}" ]] || continue
+              candidate_name="$(basename "${candidate}")"
+              keep="false"
+              case "${candidate_name}" in
+                amd64-Linux|amd64-Linux-generic) [[ "${variant}" == "base" ]] && keep="true" ;;
+                amd64-Linux-avx2) [[ "${variant}" == "avx2" ]] && keep="true" ;;
+                amd64-Windows|amd64-Windows-generic) [[ "${variant}" == "base" ]] && keep="true" ;;
+                amd64-Windows-avx2) [[ "${variant}" == "avx2" ]] && keep="true" ;;
+                arm64-Linux|x86_64-Mac\ OS\ X|aarch64-Mac\ OS\ X) keep="true" ;;
+              esac
+              [[ "${keep}" == "true" ]] || rm -rf "${candidate}"
+            done
 
             case "${variant}" in
               base)
-                test -d "${tmpdir}/libs/native/jhdf5/amd64-Linux"
-                test -d "${tmpdir}/libs/native/jhdf5/amd64-Windows"
+                test -f "${tmpdir}/libs/native/jhdf5/amd64-Linux/libjhdf5.so"
+                test -f "${tmpdir}/libs/native/jhdf5/amd64-Windows/jhdf5.dll"
                 ;;
               avx2)
-                test -d "${tmpdir}/libs/native/jhdf5/amd64-Linux-avx2"
-                test -d "${tmpdir}/libs/native/jhdf5/amd64-Windows-avx2"
+                test -f "${tmpdir}/libs/native/jhdf5/amd64-Linux-avx2/libjhdf5.so"
+                test -f "${tmpdir}/libs/native/jhdf5/amd64-Windows-avx2/jhdf5.dll"
                 ;;
             esac
-            jar -cf "build/libs/jhdf5-${variant}-${JHDF5_NATIVE_CACHE_VERSION}.jar" -C "${tmpdir}" .
+            test -f "${tmpdir}/libs/native/jhdf5/arm64-Linux/libjhdf5.so"
+            test -f "${tmpdir}/libs/native/jhdf5/aarch64-Mac OS X/libjhdf5.jnilib"
+            test -f "${tmpdir}/libs/native/jhdf5/x86_64-Mac OS X/libjhdf5.jnilib"
+
+            jar -cf "build/libs/${out_name}" -C "${tmpdir}" .
             rm -rf "${variant_dir}"
-          done
+          }
+
+          pack_variant base "jhdf5-base-${JHDF5_NATIVE_CACHE_VERSION}.jar"
+          pack_variant avx2 "jhdf5-avx2-${JHDF5_NATIVE_CACHE_VERSION}.jar"
+
+          # Stable aliases make downstream HiCT_JVM workflows easy to configure,
+          # while the versioned files remain available for manual override/cache busting.
+          cp -f "build/libs/jhdf5-base-${JHDF5_NATIVE_CACHE_VERSION}.jar" "build/libs/sis-jhdf5-19.04.1.jar"
+          cp -f "build/libs/jhdf5-avx2-${JHDF5_NATIVE_CACHE_VERSION}.jar" "build/libs/sis-jhdf5-19.04.1-avx2.jar"
+          echo "Packaged JHDF5 jars:"
+          find build/libs -maxdepth 1 -type f -name '*.jar' -print | sort
       - name: Write checksum
         if: ${{ steps.packaged-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         run: |
@@ -591,17 +641,27 @@ jobs:
       - name: Validate packaged jar
         run: |
           set -euo pipefail
-          jar_path="$(find build/libs -maxdepth 1 -type f \( -name 'sis-jhdf5-*.jar' -o -name 'jhdf5-base-*.jar' \) -not -name '*-sources.jar' -not -name '*-javadoc.jar' -not -name '*-h5ar-cli-*.jar' 2>/dev/null | sort | tail -n 1)"
-          if [[ -z "${jar_path}" ]]; then
-            echo "Could not find packaged main sis-jhdf5/base jar." >&2
+          jar_path="build/libs/jhdf5-base-${JHDF5_NATIVE_CACHE_VERSION}.jar"
+          if [[ ! -f "${jar_path}" ]]; then
+            jar_path="build/libs/sis-jhdf5-19.04.1.jar"
+          fi
+          if [[ ! -f "${jar_path}" ]]; then
+            echo "Could not find packaged base jar." >&2
             find build/libs -maxdepth 1 -type f -print | sort >&2 || true
             exit 1
           fi
+          echo "Validating ${jar_path}"
           jar tf "${jar_path}" | grep -q '^libs/native/jhdf5/amd64-Linux/libjhdf5.so$\|^native/jhdf5/amd64-Linux/libjhdf5.so$'
           jar tf "${jar_path}" | grep -q '^libs/native/jhdf5/arm64-Linux/libjhdf5.so$\|^native/jhdf5/arm64-Linux/libjhdf5.so$'
           jar tf "${jar_path}" | grep -q '^libs/native/jhdf5/amd64-Windows/jhdf5.dll$\|^native/jhdf5/amd64-Windows/jhdf5.dll$'
           jar tf "${jar_path}" | grep -q '^libs/native/jhdf5/aarch64-Mac OS X/libjhdf5.jnilib$\|^native/jhdf5/aarch64-Mac OS X/libjhdf5.jnilib$'
           jar tf "${jar_path}" | grep -q '^libs/native/jhdf5/x86_64-Mac OS X/libjhdf5.jnilib$\|^native/jhdf5/x86_64-Mac OS X/libjhdf5.jnilib$'
+          avx2_path="build/libs/jhdf5-avx2-${JHDF5_NATIVE_CACHE_VERSION}.jar"
+          if [[ -f "${avx2_path}" ]]; then
+            echo "Validating ${avx2_path}"
+            jar tf "${avx2_path}" | grep -q '^libs/native/jhdf5/amd64-Linux-avx2/libjhdf5.so$\|^native/jhdf5/amd64-Linux-avx2/libjhdf5.so$'
+            jar tf "${avx2_path}" | grep -q '^libs/native/jhdf5/amd64-Windows-avx2/jhdf5.dll$\|^native/jhdf5/amd64-Windows-avx2/jhdf5.dll$'
+          fi
       - name: Publish jar to GitHub Release
         if: ${{ github.event_name == 'release' }}
         uses: softprops/action-gh-release@v2
