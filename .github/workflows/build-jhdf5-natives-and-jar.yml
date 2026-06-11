@@ -464,11 +464,21 @@ jobs:
           if [[ -d libs/native/jhdf5/amd64-Windows-generic && ! -d libs/native/jhdf5/amd64-Windows ]]; then
             cp -a libs/native/jhdf5/amd64-Windows-generic libs/native/jhdf5/amd64-Windows
           fi
-          if [[ -d libs/native/jhdf5/amd64-Linux-generic && ! -d libs/native/jhdf5/amd64-Linux ]]; then
+          if [[ -d libs/native/jhdf5/amd64-Linux-generic ]]; then
+            rm -rf libs/native/jhdf5/amd64-Linux
             cp -a libs/native/jhdf5/amd64-Linux-generic libs/native/jhdf5/amd64-Linux
+          fi
+          if [[ -d libs/native/jhdf5/amd64-Linux && ! -L libs/native/jhdf5/amd64-Linux-generic ]]; then
+            rm -rf libs/native/jhdf5/amd64-Linux-generic
+            ln -s amd64-Linux libs/native/jhdf5/amd64-Linux-generic
+          fi
+          if [[ -d libs/native/jhdf5/amd64-Windows && ! -L libs/native/jhdf5/amd64-Windows-generic ]]; then
+            rm -rf libs/native/jhdf5/amd64-Windows-generic
+            ln -s amd64-Windows libs/native/jhdf5/amd64-Windows-generic
           fi
 
           bash scripts/ci/normalize_native_library_aliases.sh libs/native/jhdf5
+          bash scripts/ci/validate_required_native_filters.sh libs/native/jhdf5
 
           echo "Restored native payload tree:"
           find libs/native/jhdf5 -maxdepth 3 \( -type f -o -type l \) | sort | sed -n '1,500{s#^#  #;p}'
@@ -481,6 +491,10 @@ jobs:
           test -f libs/native/jhdf5/amd64-Windows-avx2/jhdf5.dll
           test -f "libs/native/jhdf5/aarch64-Mac OS X/libjhdf5.jnilib"
           test -f "libs/native/jhdf5/x86_64-Mac OS X/libjhdf5.jnilib"
+          test -L libs/native/jhdf5/amd64-Linux-generic
+          test "$(readlink libs/native/jhdf5/amd64-Linux-generic)" = "amd64-Linux"
+          test -L libs/native/jhdf5/amd64-Windows-generic
+          test "$(readlink libs/native/jhdf5/amd64-Windows-generic)" = "amd64-Windows"
       - name: Use public Gradle wrapper distribution
         if: ${{ steps.packaged-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         run: |
@@ -633,7 +647,18 @@ jobs:
             echo "::warning::Gradle did not produce a slim JHDF5 jar; split downstream packaging will use the legacy fat jar."
           fi
           bash scripts/ci/normalize_native_library_aliases.sh libs/native/jhdf5
+          if [[ -d libs/native/jhdf5/amd64-Linux && ! -L libs/native/jhdf5/amd64-Linux-generic ]]; then
+            rm -rf libs/native/jhdf5/amd64-Linux-generic
+            ln -s amd64-Linux libs/native/jhdf5/amd64-Linux-generic
+          fi
+          if [[ -d libs/native/jhdf5/amd64-Windows && ! -L libs/native/jhdf5/amd64-Windows-generic ]]; then
+            rm -rf libs/native/jhdf5/amd64-Windows-generic
+            ln -s amd64-Windows libs/native/jhdf5/amd64-Windows-generic
+          fi
+          bash scripts/ci/validate_required_native_filters.sh libs/native/jhdf5
           test -f libs/native/jhdf5/amd64-Linux/libjhdf5.so
+          test -L libs/native/jhdf5/amd64-Linux-generic
+          test "$(readlink libs/native/jhdf5/amd64-Linux-generic)" = "amd64-Linux"
           test -f libs/native/jhdf5/arm64-Linux/libjhdf5.so
           test -f libs/native/jhdf5/amd64-Windows/jhdf5.dll
           test -f "libs/native/jhdf5/aarch64-Mac OS X/libjhdf5.jnilib"
@@ -709,6 +734,17 @@ jobs:
             grep -q '^native/jhdf5/amd64-Windows/jhdf5.dll$' "${natives_list}"
             grep -q '^native/jhdf5/aarch64-Mac OS X/libjhdf5.jnilib$' "${natives_list}"
             grep -q '^native/jhdf5/x86_64-Mac OS X/libjhdf5.jnilib$' "${natives_list}"
+            for platform in 'amd64-Linux' 'amd64-Linux-avx2' 'arm64-Linux' 'amd64-Windows' 'amd64-Windows-avx2' 'aarch64-Mac OS X' 'x86_64-Mac OS X'; do
+              case "${platform}" in
+                *Windows*) suffix='dll' ;;
+                *Mac\ OS\ X*) suffix='dylib' ;;
+                *) suffix='so' ;;
+              esac
+              grep -q "^native/jhdf5/${platform}/libh5bshuf\\.${suffix}$" "${natives_list}"
+              grep -q "^native/jhdf5/${platform}/libh5lzf\\.${suffix}$" "${natives_list}"
+              grep -q "^native/jhdf5/${platform}/libh5lz4\\.${suffix}$" "${natives_list}"
+              grep -q "^native/jhdf5/${platform}/libh5zstd\\.${suffix}$" "${natives_list}"
+            done
             grep -Eq '^l.* native/jhdf5/amd64-Linux/libhdf5\.so -> libhdf5\.so\.' "${natives_verbose_list}"
             grep -Eq '^l.* native/jhdf5/amd64-Linux-avx2/libhdf5\.so -> libhdf5\.so\.' "${natives_verbose_list}"
             grep -Eq '^l.* native/jhdf5/arm64-Linux/libhdf5\.so -> libhdf5\.so\.' "${natives_verbose_list}"
