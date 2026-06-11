@@ -490,6 +490,21 @@ jobs:
       - name: Grant execute permissions
         if: ${{ steps.packaged-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         run: chmod +x gradlew
+      - name: Ensure ECJ compiler dependency
+        if: ${{ steps.packaged-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Older SIS/JHDF5 Gradle files fork javac through ECJ.  Some branches
+          # still point at ../jhdf5/libs/build/ecj-4.6.1.jar, which does not
+          # exist in a normal GitHub Actions checkout.  Put the compiler in all
+          # historical locations and keep the Maven dependency in javaproject.gradle
+          # as the primary path.
+          ecj_url="https://repo.maven.apache.org/maven2/org/eclipse/jdt/core/compiler/ecj/4.6.1/ecj-4.6.1.jar"
+          mkdir -p libs/build ../jhdf5/libs/build
+          curl -L --retry 5 --fail -o libs/build/ecj-4.6.1.jar "${ecj_url}"
+          cp -f libs/build/ecj-4.6.1.jar ../jhdf5/libs/build/ecj-4.6.1.jar
+          test -s libs/build/ecj-4.6.1.jar
       - name: Build JHDF5 jar
         if: ${{ steps.packaged-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         run: ./gradlew --no-daemon jar

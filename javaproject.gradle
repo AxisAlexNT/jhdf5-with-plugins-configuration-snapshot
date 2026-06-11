@@ -20,7 +20,7 @@ configurations.all {
 
 task wrapper(type: Wrapper) {
     gradleVersion = '4.9'
-    distributionUrl = "https://services.gradle.org/distributions/gradle-4.9-all.zip"
+    distributionUrl = "http://svnsis.ethz.ch/repos/cisd/ivy-repository/trunk/gradle/distribution/4.9/gradle-4.9-all.zip"
 }
 
 sourceCompatibility='1.8'
@@ -50,6 +50,10 @@ sourceSets {
 buildDir = 'targets/gradle'
 
 buildscript {
+}
+
+repositories {
+    mavenCentral()
 }
 
 def execute(command, arguments) {
@@ -180,7 +184,11 @@ test {
 }
 
 dependencies {
-    ecj files('../jhdf5/libs/build/ecj-4.6.1.jar')
+    // ECJ used to be resolved from a sibling checkout path:
+    // ../jhdf5/libs/build/ecj-4.6.1.jar
+    // GitHub Actions checks this repository out directly, so that file is absent.
+    // Resolve the same Eclipse compiler from Maven Central instead.
+    ecj 'org.eclipse.jdt.core.compiler:ecj:4.6.1'
 }
 
 compileJava {
