@@ -99,8 +99,36 @@ cd $BUILDDIR
 cp $SRCDIR/src/H5win32defs.h $BUILDDIR/jni/
 cp $SRCDIR/src/H5private.h $BUILDDIR/jni/
 
-PDIR="$BUILDDIR/hdf5-$VERSION/build110/hict-StdShar-GNUC/_CPack_Packages/Linux/TGZ/HDF5-1.10.11-Linux/HDF_Group/HDF5/1.10.11/"
-BDIR="$BUILDDIR/hdf5-$VERSION/build110/hict-StdShar-GNUC/"
+HDF5_CMAKE_PRESET="${CMAKE_PRESET:-hict-StdShar-GNUC-notest-noexamples}"
+HDF5_BUILD_PRESET="${HDF5_CMAKE_PRESET}"
+resolve_build_preset() {
+	local requested="$1"
+	local base_dir="$2"
+	local candidates=(
+		"$requested"
+		"${requested/-notest-noexamples/}"
+		"${requested/-notest/}"
+		"${requested/-noexamples/}"
+		"${requested/hict-/ci-}"
+	)
+	for candidate in "${candidates[@]}"; do
+		if [[ -d "$base_dir/$candidate" ]]; then
+			printf '%s\n' "$candidate"
+			return 0
+		fi
+	done
+	printf '%s\n' "$requested"
+	return 1
+}
+
+HDF5_PACKAGE_PRESET="$(resolve_build_preset "${HDF5_BUILD_PRESET}" "$BUILDDIR/hdf5-$VERSION/build110")"
+if [[ -z "${HDF5_PACKAGE_PRESET}" ]]; then
+	echo "::error file=${SCRIPT_PATH}/compile_linux_amd64.sh,line=103::No matching HDF5 build preset directory found for ${HDF5_BUILD_PRESET} under ${BUILDDIR}/hdf5-${VERSION}/build110"
+	exit 1
+fi
+HDF5_CMAKE_PRESET="$HDF5_PACKAGE_PRESET"
+PDIR="$BUILDDIR/hdf5-$VERSION/build110/$HDF5_PACKAGE_PRESET/_CPack_Packages/Linux/TGZ/HDF5-1.10.11-Linux/HDF_Group/HDF5/1.10.11/"
+BDIR="$BUILDDIR/hdf5-$VERSION/build110/$HDF5_PACKAGE_PRESET/"
 HDF5_PUBLIC_INCLUDE="$PDIR/include"
 if [[ ! -d "$HDF5_PUBLIC_INCLUDE" ]]; then
 	HDF5_PUBLIC_INCLUDE="$BDIR/src"
@@ -108,9 +136,14 @@ if [[ ! -d "$HDF5_PUBLIC_INCLUDE" ]]; then
 fi
 
 STATIC_LIBS=()
-while IFS= read -r lib_path; do
-	STATIC_LIBS+=("$lib_path")
-done < <(find "$BDIR" -type f -name "*.a" -print)
+if [[ -d "$BDIR" ]]; then
+	while IFS= read -r lib_path; do
+		STATIC_LIBS+=("$lib_path")
+	done < <(find "$BDIR" -type f -name "*.a" -print)
+else
+	echo "::error file=${SCRIPT_PATH}/compile_linux_amd64.sh,line=86::Expected HDF5 build directory was not found: ${BDIR} (workflow preset ${HDF5_CMAKE_PRESET} maps to package preset ${HDF5_PACKAGE_PRESET})"
+	exit 1
+fi
 
 
 rm -rf jhdf5*.std*.log jhdf5*.so

@@ -11,7 +11,8 @@
       "generator": "Unix Makefiles",
       "cacheVariables": {
         "HDF5_ALLOW_EXTERNAL_SUPPORT": "TGZ",
-        "TGZPATH": {"type": "STRING", "value": "${sourceParentDir}/"}
+        "TGZPATH": {"type": "STRING", "value": "${sourceParentDir}/"},
+        "ZLIB_USE_LOCALCONTENT": "OFF"
       }
     },
     {
@@ -21,7 +22,7 @@
       "generator": "Unix Makefiles",
       "cacheVariables": {
         "HDF5_PACKAGE_EXTLIBS": "ON",
-        "ZLIB_USE_LOCALCONTENT": "ON",
+        "ZLIB_USE_LOCALCONTENT": "OFF",
 	"HDF5_ENABLE_ZLIB_SUPPORT": "ON",
 	"HDF5_ENABLE_Z_LIB_SUPPORT": "ON",
         "LIBAEC_USE_LOCALCONTENT": "ON",
@@ -145,6 +146,48 @@
         "ci-Java",
         "hict-StdShar-noexamples"
       ]
+    },
+    {
+      "name": "hict-StdShar-Clang",
+      "generator": "Unix Makefiles",
+      "inherits": [
+        "ci-StdShar-Clang"
+      ]
+    },
+    {
+      "name": "hict-StdShar-Clang-noexamples",
+      "generator": "Unix Makefiles",
+      "inherits": [
+        "ci-StdShar-Clang",
+        "hict-StdShar-noexamples"
+      ]
+    },
+    {
+      "name": "hict-StdShar-MSVC-noexamples",
+      "generator": "Unix Makefiles",
+      "inherits": [
+        "ci-x64-Release-MSVC",
+        "ci-Java",
+        "hict-StdShar-noexamples"
+      ]
+    },
+    {
+      "name": "hict-StdShar-MSVC-notest",
+      "generator": "Unix Makefiles",
+      "inherits": [
+        "ci-x64-Release-MSVC",
+        "ci-Java",
+        "hict-StdShar"
+      ]
+    },
+    {
+      "name": "hict-StdShar-MSVC-notest-noexamples",
+      "generator": "Unix Makefiles",
+      "inherits": [
+        "ci-x64-Release-MSVC",
+        "ci-Java",
+        "hict-StdShar-noexamples"
+      ]
     }
   ],
   "buildPresets": [
@@ -174,6 +217,60 @@
       "inherits": [
         "ci-x64-Release-GNUC"
       ]
+    },
+    {
+      "name": "hict-StdShar-MSVC-noexamples",
+      "description": "MSVC Standard Build for x64 (Release) for HiCT version of jHDF5 with plugins and no examples package",
+      "configurePreset": "hict-StdShar-MSVC-noexamples",
+      "verbose": false,
+      "inherits": [
+        "ci-x64-Release-MSVC"
+      ]
+    },
+    {
+      "name": "hict-StdShar-MSVC-notest",
+      "description": "MSVC Standard Build for x64 (Release) for HiCT version of jHDF5 with plugins",
+      "configurePreset": "hict-StdShar-MSVC-notest",
+      "verbose": false,
+      "inherits": [
+        "ci-x64-Release-MSVC"
+      ]
+    },
+    {
+      "name": "hict-StdShar-MSVC-notest-noexamples",
+      "description": "MSVC Standard Build for x64 (Release) for HiCT version of jHDF5 with plugins and no examples",
+      "configurePreset": "hict-StdShar-MSVC-notest-noexamples",
+      "verbose": false,
+      "inherits": [
+        "ci-x64-Release-MSVC"
+      ]
+    },
+    {
+      "name": "hict-StdShar-Clang",
+      "description": "Clang Standard Build for macOS (Release) for HiCT version of jHDF5 with plugins",
+      "configurePreset": "hict-StdShar-Clang",
+      "verbose": false,
+      "inherits": [
+        "ci-StdShar-Clang"
+      ]
+    },
+    {
+      "name": "hict-StdShar-Clang-noexamples",
+      "description": "Clang Standard Build for macOS (Release) for HiCT jHDF5 with plugins and no examples",
+      "configurePreset": "hict-StdShar-Clang-noexamples",
+      "verbose": false,
+      "inherits": [
+        "ci-StdShar-Clang"
+      ]
+    },
+    {
+      "name": "hict-StdShar-Clang-notest-noexamples",
+      "description": "Clang Standard Build for macOS (Release) for HiCT jHDF5 with plugins and no examples",
+      "configurePreset": "hict-StdShar-Clang-noexamples",
+      "verbose": false,
+      "inherits": [
+        "ci-StdShar-Clang"
+      ]
     }
   ],
   "testPresets": [
@@ -194,6 +291,13 @@
       "configurePreset": "hict-StdShar-GNUC",
       "inherits": [
         "ci-x64-Release-GNUC"
+      ]
+    },
+    {
+      "name": "hict-StdShar-Clang",
+      "configurePreset": "hict-StdShar-Clang",
+      "inherits": [
+        "ci-StdShar-Clang"
       ]
     }
   ],
@@ -216,6 +320,42 @@
       "name": "hict-StdShar-GNUC-noexamples",
       "configurePreset": "hict-StdShar-GNUC-noexamples",
       "inherits": "ci-x64-Release-GNUC",
+      "output": {
+        "debug":false,
+        "verbose": false
+      }
+    },
+    {
+      "name": "hict-StdShar-MSVC-noexamples",
+      "configurePreset": "hict-StdShar-MSVC-noexamples",
+      "inherits": "ci-x64-Release-MSVC",
+      "output": {
+        "debug":false,
+        "verbose": false
+      }
+    },
+    {
+      "name": "hict-StdShar-MSVC-notest",
+      "configurePreset": "hict-StdShar-MSVC-notest",
+      "inherits": "ci-x64-Release-MSVC",
+      "output": {
+        "debug":false,
+        "verbose": false
+      }
+    },
+    {
+      "name": "hict-StdShar-MSVC-notest-noexamples",
+      "configurePreset": "hict-StdShar-MSVC-notest-noexamples",
+      "inherits": "ci-x64-Release-MSVC",
+      "output": {
+        "debug":false,
+        "verbose": false
+      }
+    },
+    {
+      "name": "hict-StdShar-Clang",
+      "configurePreset": "hict-StdShar-Clang",
+      "inherits": "ci-StdShar-Clang",
       "output": {
         "debug":false,
         "verbose": false
@@ -261,6 +401,44 @@
         {"type": "configure", "name": "hict-StdShar-GNUC-noexamples"},
         {"type": "build", "name": "hict-StdShar-GNUC-noexamples"},
         {"type": "package", "name": "hict-StdShar-GNUC-noexamples"}
+      ]
+    },
+    {
+      "name": "hict-StdShar-GNUC-noexamples",
+      "steps": [
+        {"type": "configure", "name": "hict-StdShar-GNUC-noexamples"},
+        {"type": "build", "name": "hict-StdShar-GNUC-noexamples"},
+        {"type": "package", "name": "hict-StdShar-GNUC-noexamples"}
+      ]
+    },
+    {
+      "name": "hict-StdShar-MSVC-notest-noexamples",
+      "steps": [
+        {"type": "configure", "name": "hict-StdShar-MSVC-noexamples"},
+        {"type": "build", "name": "hict-StdShar-MSVC-noexamples"},
+        {"type": "package", "name": "hict-StdShar-MSVC-noexamples"}
+      ]
+    },
+    {
+      "name": "hict-StdShar-Clang-noexamples",
+      "steps": [
+        {"type": "configure", "name": "hict-StdShar-Clang-noexamples"},
+        {"type": "build", "name": "hict-StdShar-Clang-noexamples"}
+      ]
+    },
+    {
+      "name": "hict-StdShar-Clang-notest",
+      "steps": [
+        {"type": "configure", "name": "hict-StdShar-Clang"},
+        {"type": "build", "name": "hict-StdShar-Clang"},
+        {"type": "package", "name": "hict-StdShar-Clang"}
+      ]
+    },
+    {
+      "name": "hict-StdShar-Clang-notest-noexamples",
+      "steps": [
+        {"type": "configure", "name": "hict-StdShar-Clang-noexamples"},
+        {"type": "build", "name": "hict-StdShar-Clang-noexamples"}
       ]
     }
   ]

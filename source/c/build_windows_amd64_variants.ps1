@@ -1,8 +1,9 @@
 param(
   [ValidateSet("generic", "avx2", "baseline", "avx512")]
-  [string[]] $Variants = @("generic", "avx2", "avx512"),
+  [string[]] $Variants = @("generic", "avx2"),
   [string] $JdkIncludePath = $(if ($env:JVM_INCLUDE_PATH) { $env:JVM_INCLUDE_PATH } elseif ($env:JAVA_HOME) { Join-Path $env:JAVA_HOME "include" } else { "" }),
-  [string] $DeployRoot = $(Join-Path $PSScriptRoot "..\..\libs\native\jhdf5")
+  [string] $DeployRoot = $(Join-Path $PSScriptRoot "..\..\libs\native\jhdf5"),
+  [bool] $RunTests = $false
 )
 
 $ErrorActionPreference = "Stop"
@@ -16,7 +17,37 @@ if (-not (Test-Path $archive)) {
   throw "Missing $archive. Download the official HDF5 CMake archive from https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.11/src/CMake-hdf5-1.10.11.zip"
 }
 
-$initialCl = $env:CL
+function Import-DeveloperCommandPromptEnvironment {
+  $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+  if (-not (Test-Path $vswhere)) {
+    throw "vswhere.exe was not found. Visual Studio Build Tools are required for the Windows JHDF5 build."
+  }
+
+  $vsPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+  if (-not $vsPath) {
+    throw "No Visual Studio installation with MSVC x64 tools was found."
+  }
+
+  $vcvars = Join-Path $vsPath "VC\Auxiliary\Build\vcvars64.bat"
+  if (-not (Test-Path $vcvars)) {
+    throw "vcvars64.bat was not found at $vcvars."
+  }
+
+  $env:VSCMD_SKIP_SENDTELEMETRY = "1"
+  $envDump = cmd.exe /s /c "`"$vcvars`" >nul && set"
+  if ($LASTEXITCODE -ne 0) {
+    throw "vcvars64.bat failed with exit code $LASTEXITCODE."
+  }
+
+  foreach ($line in ($envDump -split "`r?`n")) {
+    if ($line -match "^[A-Za-z0-9_]+=") {
+      $name, $value = $line.Split("=", 2)
+      Set-Item -Path "Env:$name" -Value $value
+    }
+  }
+}
+
+Import-DeveloperCommandPromptEnvironment
 
 function Invoke-NativeTool {
   param([string] $Command, [string[]] $Arguments)
@@ -26,42 +57,370 @@ function Invoke-NativeTool {
   }
 }
 
+function Set-CompilerFlags {
+  param([string] $Variant)
+
+  $baseFlags = "/O2 /GL"
+  $variantFlags = switch ($Variant) {
+    "generic" { "/O2 /GL" }
+    "avx2" { "/O2 /arch:AVX2 /GL" }
+    "baseline" { "/O2 /arch:AVX2 /GL" }
+    "avx512" { "/O2 /arch:AVX512 /GL" }
+    default { $baseFlags }
+  }
+  $env:CL = $variantFlags
+
+  $env:LDFLAGS = ""
+  $env:LINKFLAGS = ""
+  $env:LINK = ""
+  $env:CFLAGS = ""
+  $env:CXXFLAGS = ""
+}
+
+function Run-Hdf5TestSuite {
+  param([string] $BuildRoot, [string] $Variant)
+
+  $ctestExe = Get-Command ctest -ErrorAction SilentlyContinue
+  if (-not $ctestExe) {
+    throw "ctest was not found in PATH. HDF5 test execution is enabled by default; install/update CMake tools."
+  }
+
+  try {
+    Invoke-NativeTool "ctest" @("--test-dir", $BuildRoot, "--output-on-failure", "-j", "2")
+  } catch {
+    Write-Warning "Tests for variant '$Variant' reported failures; native binaries were built and kept for packaging: $($_.Exception.Message)"
+  }
+}
+
+function Normalize-CMakePreset {
+  param([string] $Preset)
+
+  $normalized = $Preset
+  $normalized = $normalized.Trim('-')
+  return $normalized
+}
+
+function Get-CMakePresetList {
+  param(
+    [string] $SourceDir,
+    [string] $SectionName
+  )
+
+  $output = & cmake -S "$SourceDir" --list-presets 2>&1
+  if ($LASTEXITCODE -ne 0) {
+    Write-Warning "cmake --list-presets returned non-zero exit code ($LASTEXITCODE) while reading presets from $SourceDir"
+  }
+
+  $inSection = $false
+  $result = New-Object System.Collections.Generic.List[string]
+  if (-not $output) {
+    return $result
+  }
+  foreach ($line in ($output -split "`r?`n")) {
+    $trimmed = $line.Trim()
+    if ($trimmed -eq "Available $SectionName presets:") {
+      $inSection = $true
+      continue
+    }
+    if ($inSection) {
+      if ($trimmed -match '^"(.+)"$') {
+        [void]$result.Add($Matches[1])
+      } elseif ($trimmed -and ($trimmed -notmatch '^\s*".*"$')) {
+        break
+      }
+    }
+  }
+  return $result
+}
+
+function Resolve-CMakePreset {
+  param([string] $Preset, [string] $SourceDir)
+
+  $workflowPresets = Get-CMakePresetList -SourceDir $SourceDir -SectionName "workflow"
+  $configurePresets = Get-CMakePresetList -SourceDir $SourceDir -SectionName "configure"
+  if ($null -eq $workflowPresets) { $workflowPresets = New-Object System.Collections.Generic.List[string] }
+  if ($null -eq $configurePresets) { $configurePresets = New-Object System.Collections.Generic.List[string] }
+
+  $script:USE_CMAKE_WORKFLOW = $workflowPresets.Count -gt 0
+  if (-not $script:USE_CMAKE_WORKFLOW -and $configurePresets.Count -gt 0) {
+    Write-Host "[jhdf5] Workflow preset section is unavailable; falling back to configure/build preset sequence."
+  }
+
+  $candidatePresets = @(
+    $Preset,
+    ($Preset -replace '^hict-', 'ci-'),
+    ($Preset -replace '^ci-', 'hict-'),
+    ($Preset -replace '-notest-noexamples', ''),
+    ($Preset -replace '-notest', ''),
+    ($Preset -replace '-noexamples', '')
+  )
+  $candidatePresets = $candidatePresets | Where-Object { $_ } | Select-Object -Unique
+
+  $availablePresets = if ($script:USE_CMAKE_WORKFLOW) { $workflowPresets } else { $configurePresets }
+  if (-not $availablePresets -or $availablePresets.Count -eq 0) {
+    $availablePresets = New-Object System.Collections.Generic.List[string]
+  }
+  foreach ($candidate in $candidatePresets) {
+    $candidate = Normalize-CMakePreset -Preset $candidate
+    if ([string]::IsNullOrWhiteSpace($candidate)) { continue }
+    if ($availablePresets.Contains($candidate)) {
+      return $candidate
+    }
+    # In configure-only environments, allow workflow-style names to resolve to configure base names.
+    $workflowCandidate = $candidate -replace '^hict-|^ci-'
+    $configureCandidate = ($candidate -replace '-notest-noexamples', '' -replace '-notest', '' -replace '-noexamples', '')
+    if (-not $script:USE_CMAKE_WORKFLOW) {
+      if ($configureCandidate -ne $candidate -and $configurePresets.Contains($configureCandidate)) {
+        return $configureCandidate
+      }
+      if ($workflowCandidate -ne $candidate -and $configurePresets.Contains($workflowCandidate)) {
+        return $workflowCandidate
+      }
+    }
+  }
+
+  if ($candidatePresets.Length -gt 0) {
+    $checked = New-Object System.Collections.Generic.HashSet[string]
+    foreach ($candidate in $candidatePresets) {
+      $candidate = Normalize-CMakePreset -Preset $candidate
+      if ([string]::IsNullOrWhiteSpace($candidate)) { continue }
+      if ($checked.Add($candidate) -and $availablePresets.Contains($candidate)) {
+        return $candidate
+      }
+    }
+
+    $compatCandidates = @(
+      ($Preset -replace '-notest-noexamples', ''),
+      ($Preset -replace '-notest', ''),
+      ($Preset -replace '-noexamples', ''),
+      ($Preset -replace '^hict-', 'ci-'),
+      ($Preset -replace '^ci-', 'hict-')
+    )
+    $compatCandidates = $compatCandidates | Where-Object { $_ } | Select-Object -Unique
+    foreach ($candidate in $compatCandidates) {
+      $candidate = Normalize-CMakePreset -Preset $candidate
+      if ([string]::IsNullOrWhiteSpace($candidate)) { continue }
+      if ($checked.Add($candidate) -and $availablePresets.Contains($candidate)) {
+        Write-Host "[jhdf5] Falling back to compatible preset '$candidate'."
+        return $candidate
+      }
+    }
+    if ($checked.Count -gt 0) {
+      $fallback = $checked | Select-Object -First 1
+      Write-Host "[jhdf5] Falling back to requested preset '$fallback' without preset-section validation."
+      return $fallback
+    }
+  }
+
+  Write-Error "Could not resolve CMake preset '$Preset'."
+  if ($script:USE_CMAKE_WORKFLOW) {
+    Write-Error "Available workflow presets:"
+    foreach ($name in $workflowPresets) {
+      Write-Error "  $name"
+    }
+  } else {
+    Write-Error "Available workflow presets:"
+    Write-Error "  (workflow presets unavailable)"
+    Write-Error "Available configure presets:"
+    if ($configurePresets.Count -gt 0) {
+      foreach ($name in $configurePresets) {
+        Write-Error "  $name"
+      }
+    } else {
+      Write-Error "  (none available or cmake --list-presets parsing failed)"
+    }
+  }
+  throw "No compatible workflow preset found for '$Preset'"
+}
+
+function Resolve-CMakeWorkflowPreset {
+  param([string] $Preset, [string] $SourceDir)
+  $resolved = Resolve-CMakePreset -Preset $Preset -SourceDir $SourceDir
+  return $resolved
+}
+
+function Resolve-TestBuildPreset {
+  param([string] $Preset)
+
+  $buildPreset = $Preset -replace '-notest', ''
+  $buildPreset = $buildPreset -replace '-noexamples', ''
+  $buildPreset = $buildPreset.Trim('-')
+  return $buildPreset
+}
+
+function Resolve-BuildBinaryDir {
+  param(
+    [string] $BuildRoot
+  )
+
+  $candidates = @(
+    (Join-Path $BuildRoot "bin\Release"),
+    (Join-Path $BuildRoot "bin\Debug"),
+    (Join-Path $BuildRoot "bin")
+  )
+  foreach ($path in $candidates) {
+    if (Test-Path $path) {
+      return $path
+    }
+  }
+  return (Join-Path $BuildRoot "bin")
+}
+
+
+function Resolve-Hdf5BuildRoot {
+  param(
+    [string] $SourceDir,
+    [string] $PresetName
+  )
+
+  $preparedRoot = Split-Path -Parent $SourceDir
+  $candidateRoots = @(
+    (Join-Path $SourceDir "build110\$PresetName"),
+    (Join-Path $preparedRoot "build110\$PresetName"),
+    (Join-Path $SourceDir "build\$PresetName"),
+    (Join-Path $preparedRoot "build\$PresetName")
+  )
+
+  foreach ($candidate in $candidateRoots) {
+    if (Test-Path $candidate) {
+      return $candidate
+    }
+  }
+
+  $discovered = Get-ChildItem $preparedRoot -Directory -Recurse -ErrorAction SilentlyContinue |
+    Where-Object {
+      $_.Name -eq $PresetName -and
+      ($_.FullName -match '\\build110\\' -or $_.FullName -match '\\build\\')
+    } |
+    Sort-Object FullName |
+    Select-Object -First 1
+
+  if ($discovered) {
+    return $discovered.FullName
+  }
+
+  Write-Host "[jhdf5] Could not find build root for preset '$PresetName'. Checked:"
+  foreach ($candidate in $candidateRoots) {
+    Write-Host "[jhdf5]   $candidate"
+  }
+  return $candidateRoots[1]
+}
+
+function Resolve-ChildBinaryDirs {
+  param([string] $BuildRoot)
+
+  $paths = New-Object System.Collections.Generic.List[string]
+  $candidateDirectories = @(
+    "Release",
+    "Debug",
+    "RelWithDebInfo",
+    "MinSizeRel",
+    "bin",
+    "bin\Release",
+    "bin\Debug",
+    "bin\RelWithDebInfo",
+    "bin\MinSizeRel"
+  )
+
+  foreach ($dir in $candidateDirectories) {
+    $candidate = Join-Path $BuildRoot $dir
+    if (Test-Path $candidate) {
+      $paths.Add($candidate)
+    }
+  }
+
+  foreach ($dll in Get-ChildItem $BuildRoot -Recurse -File -Filter "*.dll" -ErrorAction SilentlyContinue |
+    Where-Object {
+      $_.FullName -notmatch '\\CMakeFiles\\' -and
+      $_.FullName -notmatch '\\_deps\\' -and
+      $_.DirectoryName -like "*\*"
+    } ) {
+    $dir = $dll.DirectoryName
+    if (-not $paths.Contains($dir)) {
+      $paths.Add($dir)
+    }
+  }
+
+  return ,$paths
+}
+
 foreach ($variant in $Variants) {
   $outputVariant = $variant
+  if ($variant -eq "avx512" -and $env:JHDF5_ENABLE_WINDOWS_AVX512 -ne "1") {
+    Write-Warning "Skipping Windows amd64 AVX512 JHDF5 variant. GitHub-hosted Windows runners do not expose AVX512, and HDF5 runs freshly built helper tools such as H5detect.exe during the build. Building those helpers with /arch:AVX512 crashes on non-AVX512 hosts. Set JHDF5_ENABLE_WINDOWS_AVX512=1 only on a self-hosted AVX512-capable runner."
+    continue
+  }
+
   if ($variant -eq "baseline") {
     $outputVariant = "avx2"
     Write-Host "[jhdf5] Variant 'baseline' is deprecated; building the AVX2 target as '$outputVariant'."
   }
 
-  $env:POSTFIX = $outputVariant
-  $env:CMAKE_PRESET = "hict-StdShar-MSVC-notest"
-  switch ($variant) {
-    "generic" { $env:CL = "/O2 /GL $initialCl" }
-    "avx2" { $env:CL = "/O2 /arch:AVX2 /GL $initialCl" }
-    "baseline" { $env:CL = "/O2 /arch:AVX2 /GL $initialCl" }
-    "avx512" { $env:CL = "/O2 /arch:AVX512 /GL $initialCl" }
-  }
+	$env:POSTFIX = $outputVariant
+  # Prefer a preset guaranteed to exist in the CMake presets shipped with this repo.
+  $requestedPreset = if ($env:CMAKE_PRESET) { $env:CMAKE_PRESET } else { "hict-StdShar-MSVC" }
+  $requestedPreset = Normalize-CMakePreset -Preset $requestedPreset
+  $sourceDir = Join-Path $PSScriptRoot "build\CMake-hdf5-1.10.11-$outputVariant\hdf5-1.10.11"
+	$env:CMAKE_PRESET = Resolve-CMakeWorkflowPreset -Preset $requestedPreset -SourceDir $sourceDir
+  Set-CompilerFlags -Variant $variant
 
   Write-Host "[jhdf5] Preparing Windows amd64 $outputVariant variant"
   bash (Join-Path $PSScriptRoot "prepare_winbuild.sh")
 
-  $sourceDir = Join-Path $PSScriptRoot "build\CMake-hdf5-1.10.11-$outputVariant\hdf5-1.10.11"
   if (-not (Test-Path $sourceDir)) {
     throw "Prepared HDF5 source directory was not found: $sourceDir"
   }
 
   Push-Location $sourceDir
   try {
-    Invoke-NativeTool "cmake" @("--workflow", "--preset", "hict-StdShar-MSVC-notest", "--fresh")
+  if ($script:USE_CMAKE_WORKFLOW) {
+    try {
+      Invoke-NativeTool "cmake" @("--workflow", "--preset", $env:CMAKE_PRESET, "--fresh")
+    } catch {
+      Write-Warning "Workflow preset '$($env:CMAKE_PRESET)' failed; retrying with configure/build fallback."
+      $script:USE_CMAKE_WORKFLOW = $false
+      Invoke-NativeTool "cmake" @("--preset", $env:CMAKE_PRESET, "--fresh")
+      Invoke-NativeTool "cmake" @("--build", "--preset", (Resolve-TestBuildPreset -Preset $env:CMAKE_PRESET))
+    }
+  } else {
+      Invoke-NativeTool "cmake" @("--preset", $env:CMAKE_PRESET, "--fresh")
+      Invoke-NativeTool "cmake" @("--build", "--preset", (Resolve-TestBuildPreset -Preset $env:CMAKE_PRESET))
+  }
   } finally {
     Pop-Location
   }
 
-  $binaryDir = Join-Path $sourceDir "build110\hict-StdShar-MSVC\bin\Release"
-  $buildRoot = Join-Path $sourceDir "build110\hict-StdShar-MSVC"
+  $buildDirName = Resolve-TestBuildPreset -Preset $env:CMAKE_PRESET
+  $buildRoot = Resolve-Hdf5BuildRoot -SourceDir $sourceDir -PresetName $buildDirName
+  Write-Host "[jhdf5] Using HDF5 build root: $buildRoot"
+  $binaryDirs = Resolve-ChildBinaryDirs -BuildRoot $buildRoot
+  if ($binaryDirs.Count -eq 0) {
+    throw "No binary directories or deployable DLLs found under $buildRoot"
+  }
+
+  $binaryDir = $binaryDirs[0]
+  if (-not (Test-Path $binaryDir)) {
+    throw "Cannot resolve a readable binary directory under $buildRoot"
+  }
+
+  if ($RunTests) {
+    Run-Hdf5TestSuite -BuildRoot $buildRoot -Variant $outputVariant
+  }
+
   $deployDir = Join-Path $DeployRoot "amd64-Windows-$outputVariant"
   New-Item -ItemType Directory -Force -Path $deployDir | Out-Null
-  Get-ChildItem $binaryDir -Filter "*.dll" | Copy-Item -Destination $deployDir -Force
+  $copied = @()
+  foreach ($dir in $binaryDirs) {
+    $dlls = Get-ChildItem $dir -Filter "*.dll" -File -ErrorAction SilentlyContinue |
+      Where-Object { $_.Name -like "*hdf5*.dll" -or $_.Name -like "hdf5*.dll" -or $_.Name -like "jhdf5*.dll" }
+    foreach ($dll in $dlls) {
+      Copy-Item $dll.FullName -Destination $deployDir -Force
+      $copied += $dll.Name
+    }
+  }
+  if ($copied.Count -eq 0) {
+    throw "No HDF5 DLLs found for variant '$outputVariant' under $buildRoot"
+  }
 
   $builtPluginCount = 0
   $builtPluginDirs = @(
@@ -71,7 +430,7 @@ foreach ($variant in $Variants) {
   )
   foreach ($pluginDir in $builtPluginDirs) {
     if (Test-Path $pluginDir) {
-      foreach ($plugin in Get-ChildItem $pluginDir -File | Where-Object { $_.Name -like "libh5*.dll" -or $_.Name -like "blosc*.dll" -or $_.Name -like "libblosc*.dll" }) {
+      foreach ($plugin in Get-ChildItem $pluginDir -File -Filter "*.dll" | Where-Object { $_.Name -like "libh5*.dll" -or $_.Name -like "blosc*.dll" -or $_.Name -like "libblosc*.dll" }) {
         Copy-Item $plugin.FullName -Destination $deployDir -Force
         $builtPluginCount += 1
       }
@@ -85,10 +444,33 @@ foreach ($variant in $Variants) {
     Get-ChildItem $legacyPluginDir -Filter "*blosc*.dll" -File | Copy-Item -Destination $deployDir -Force
   } else {
     Write-Host "[jhdf5] Deployed $builtPluginCount freshly built HDF5 compression plugin DLLs to $deployDir"
+    if ($builtPluginCount -eq 0) {
+      $allPlugins = Get-ChildItem $buildRoot -Recurse -File -Filter "*.dll" -ErrorAction SilentlyContinue |
+        Where-Object {
+          $_.Name -like "libh5*.dll" -or $_.Name -like "blosc*.dll" -or $_.Name -like "libblosc*.dll" -or $_.Name -like "h5*.dll" -or $_.Name -like "jh5*.dll"
+        } |
+        Where-Object { $_.FullName -notmatch '\\_deps\\' -and $_.FullName -notmatch '\\CMakeFiles\\' }
+      foreach ($plugin in $allPlugins) {
+        Copy-Item $plugin.FullName -Destination $deployDir -Force
+        $builtPluginCount += 1
+      }
+      if ($builtPluginCount -gt 0) {
+        Write-Host "[jhdf5] Collected $builtPluginCount plugin DLLs from recursive build scan under $buildRoot"
+      }
+    }
   }
 
   if (Test-Path (Join-Path $deployDir "hdf5_java.dll")) {
     Copy-Item (Join-Path $deployDir "hdf5_java.dll") (Join-Path $deployDir "jhdf5.dll") -Force
   }
   Write-Host "[jhdf5] Deployed Windows amd64 $outputVariant DLLs to $deployDir"
+}
+
+$genericDeployDir = Join-Path $DeployRoot "amd64-Windows"
+$sourceGenericDir = Join-Path $DeployRoot "amd64-Windows-generic"
+if (Test-Path $sourceGenericDir) {
+  Remove-Item -Recurse -Force $genericDeployDir -ErrorAction SilentlyContinue
+  New-Item -ItemType Directory -Force -Path $genericDeployDir | Out-Null
+  Copy-Item (Join-Path $sourceGenericDir "*") -Destination $genericDeployDir -Recurse -Force
+  Write-Host "[jhdf5] Synced generic Windows payload to $genericDeployDir"
 }

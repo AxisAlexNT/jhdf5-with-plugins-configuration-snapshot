@@ -41,19 +41,17 @@ Linux amd64 builds:
 
 ```bash
 cd source/c
-JAVA_HOME=/path/to/jdk ./build_linux_amd64_variants.sh generic avx2 avx512
+JAVA_HOME=/path/to/jdk ./build_linux_amd64_variants.sh generic avx2
 ```
 
 The `generic` variant is the portable amd64 build. The `avx2` variant
 targets AVX2/FMA/SSE4.2/BMI/BMI2 for the modern non-AVX-512 machines HiCT
-currently targets. The `avx512` variant adds AVX-512F/DQ/BW/VL and must only be
-loaded after CPU feature detection. The old `baseline` name is accepted as a
+currently targets. The old `baseline` name is accepted as a
 compatibility alias for `avx2`. Outputs are deployed to:
 
 ```text
 libs/native/jhdf5/amd64-Linux-generic
 libs/native/jhdf5/amd64-Linux-avx2
-libs/native/jhdf5/amd64-Linux-avx512
 ```
 
 The build scripts use the HDF5 CMake archive in offline/TGZ mode. They repack

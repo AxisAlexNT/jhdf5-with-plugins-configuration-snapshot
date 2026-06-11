@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [ -z "${CFLAGS+x}" ]; then
-  CFLAGS="-O3 -fPIC"
+  CFLAGS="-O3 -fPIC -std=gnu99"
 fi
 export CFLAGS
 

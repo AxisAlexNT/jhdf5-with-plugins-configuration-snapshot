@@ -24,7 +24,27 @@ fi
 
 VARIANTS=("$@")
 if [[ ${#VARIANTS[@]} -eq 0 ]]; then
-  VARIANTS=("generic" "avx2" "avx512")
+  VARIANTS=("generic" "avx2")
+fi
+
+FILTERED_VARIANTS=()
+for variant in "${VARIANTS[@]}"; do
+  case "${variant}" in
+    generic|avx2|baseline)
+      FILTERED_VARIANTS+=("${variant}")
+      ;;
+    avx512)
+      echo "Skipping unsupported Linux amd64 variant '${variant}' (excluded by CI policy)." >&2
+      ;;
+    *)
+      echo "Unknown variant '${variant}'. Expected: generic, avx2, baseline."
+      exit 1
+      ;;
+  esac
+done
+
+if [[ ${#FILTERED_VARIANTS[@]} -gt 0 ]]; then
+  VARIANTS=("${FILTERED_VARIANTS[@]}")
 fi
 
 build_variant() {
@@ -32,6 +52,7 @@ build_variant() {
   local output_variant="$variant"
   local cflags
   local jhdf5_flags
+  local cmake_preset="${CMAKE_PRESET:-hict-StdShar-GNUC-noexamples}"
 
   case "$variant" in
     generic)
@@ -59,13 +80,22 @@ build_variant() {
   echo "[jhdf5] Building Linux amd64 $output_variant variant"
   (
     cd "$SCRIPT_PATH"
-    POSTFIX="$output_variant" CFLAGS="$cflags" ./compile_hdf5_gcc.sh amd64 ""
+    CC="${CC:-gcc}" CXX="${CXX:-g++}" CMAKE_PRESET="$cmake_preset" POSTFIX="$output_variant" CFLAGS="$cflags" ./compile_hdf5_gcc.sh amd64 ""
     POSTFIX="$output_variant" \
+      CC="${CC:-gcc}" CXX="${CXX:-g++}" \
+      CMAKE_PRESET="$cmake_preset" \
       CFLAGS="$cflags" \
       JHDF5_ADDITIONAL_GCC_FLAGS="$jhdf5_flags" \
       JHDF5_DEPLOY_DIR="$REPO_ROOT/libs/native/jhdf5/amd64-Linux-$output_variant" \
       ./compile_linux_amd64.sh
   )
+
+  if [[ "$output_variant" == "generic" ]]; then
+    local base_deploy_dir="$REPO_ROOT/libs/native/jhdf5/amd64-Linux"
+    rm -rf "$base_deploy_dir"
+    mkdir -p "$base_deploy_dir"
+    cp -a "$REPO_ROOT/libs/native/jhdf5/amd64-Linux-$output_variant"/. "$base_deploy_dir"/
+  fi
 }
 
 for variant in "${VARIANTS[@]}"; do
