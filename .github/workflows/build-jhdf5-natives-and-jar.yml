@@ -12,6 +12,14 @@ on:
         type: boolean
         required: false
         default: false
+      release_tag:
+        description: "Release tag to create/update with packaged assets after a successful manual run. Leave empty to skip release upload."
+        required: false
+        default: "release-artifacts"
+      release_name:
+        description: "Release title to use when creating the release during a manual run."
+        required: false
+        default: "Pre-built binaries for HiCT_JVM"
   push:
     branches: [master, main, jvm-sfx-native]
   release:
@@ -22,7 +30,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: jhdf5-native-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.native_cache_version || 'v1' }}
+  group: jhdf5-native-${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.native_cache_version || 'v1' }}
   cancel-in-progress: false
 
 env:
@@ -688,8 +696,10 @@ jobs:
             echo "Validating split artifacts ${slim_path} + ${natives_path}"
             slim_list="$(mktemp)"
             natives_list="$(mktemp)"
+            natives_verbose_list="$(mktemp)"
             jar tf "${slim_path}" > "${slim_list}"
             tar -tzf "${natives_path}" > "${natives_list}"
+            tar -tvzf "${natives_path}" > "${natives_verbose_list}"
             ! grep -q '^native/jhdf5/\|^libs/native/jhdf5/' "${slim_list}" || {
               echo "Slim JHDF5 jar unexpectedly contains native payloads." >&2
               exit 1
@@ -699,9 +709,9 @@ jobs:
             grep -q '^native/jhdf5/amd64-Windows/jhdf5.dll$' "${natives_list}"
             grep -q '^native/jhdf5/aarch64-Mac OS X/libjhdf5.jnilib$' "${natives_list}"
             grep -q '^native/jhdf5/x86_64-Mac OS X/libjhdf5.jnilib$' "${natives_list}"
-            tar -tvzf "${natives_path}" | grep -Eq '^l.* native/jhdf5/amd64-Linux/libhdf5\.so -> libhdf5\.so\.'
-            tar -tvzf "${natives_path}" | grep -Eq '^l.* native/jhdf5/amd64-Linux-avx2/libhdf5\.so -> libhdf5\.so\.'
-            tar -tvzf "${natives_path}" | grep -Eq '^l.* native/jhdf5/arm64-Linux/libhdf5\.so -> libhdf5\.so\.'
+            grep -Eq '^l.* native/jhdf5/amd64-Linux/libhdf5\.so -> libhdf5\.so\.' "${natives_verbose_list}"
+            grep -Eq '^l.* native/jhdf5/amd64-Linux-avx2/libhdf5\.so -> libhdf5\.so\.' "${natives_verbose_list}"
+            grep -Eq '^l.* native/jhdf5/arm64-Linux/libhdf5\.so -> libhdf5\.so\.' "${natives_verbose_list}"
           else
             echo "::error::Split JHDF5 artifacts are incomplete; expected ${slim_path} and ${natives_path}." >&2
             find build/libs -maxdepth 1 -type f -print | sort >&2 || true
@@ -714,9 +724,15 @@ jobs:
           path: build/libs
           key: jhdf5-packaged-jar-v3-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-hdf5-${{ env.HDF5_VERSION }}
       - name: Publish jar to GitHub Release
-        if: ${{ github.event_name == 'release' }}
+        if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '') }}
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.event.release.tag_name }}
+          name: ${{ github.event_name == 'workflow_dispatch' && inputs.release_name || github.event.release.name }}
+          target_commitish: ${{ github.sha }}
+          prerelease: ${{ github.event_name == 'workflow_dispatch' }}
+          make_latest: ${{ github.event_name == 'workflow_dispatch' && 'false' || 'legacy' }}
+          overwrite_files: true
           files: |
             build/libs/*.jar
             build/libs/*.tar.gz
