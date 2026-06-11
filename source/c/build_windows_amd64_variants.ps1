@@ -1,6 +1,6 @@
 param(
   [ValidateSet("generic", "avx2", "baseline", "avx512")]
-  [string[]] $Variants = @("generic", "avx2", "avx512"),
+  [string[]] $Variants = @("generic", "avx2"),
   [string] $JdkIncludePath = $(if ($env:JVM_INCLUDE_PATH) { $env:JVM_INCLUDE_PATH } elseif ($env:JAVA_HOME) { Join-Path $env:JAVA_HOME "include" } else { "" }),
   [string] $DeployRoot = $(Join-Path $PSScriptRoot "..\..\libs\native\jhdf5"),
   [bool] $RunTests = $false
@@ -266,46 +266,6 @@ function Resolve-BuildBinaryDir {
   return (Join-Path $BuildRoot "bin")
 }
 
-
-function Resolve-Hdf5BuildRoot {
-  param(
-    [string] $SourceDir,
-    [string] $PresetName
-  )
-
-  $preparedRoot = Split-Path -Parent $SourceDir
-  $candidateRoots = @(
-    (Join-Path $SourceDir "build110\$PresetName"),
-    (Join-Path $preparedRoot "build110\$PresetName"),
-    (Join-Path $SourceDir "build\$PresetName"),
-    (Join-Path $preparedRoot "build\$PresetName")
-  )
-
-  foreach ($candidate in $candidateRoots) {
-    if (Test-Path $candidate) {
-      return $candidate
-    }
-  }
-
-  $discovered = Get-ChildItem $preparedRoot -Directory -Recurse -ErrorAction SilentlyContinue |
-    Where-Object {
-      $_.Name -eq $PresetName -and
-      ($_.FullName -match '\\build110\\' -or $_.FullName -match '\\build\\')
-    } |
-    Sort-Object FullName |
-    Select-Object -First 1
-
-  if ($discovered) {
-    return $discovered.FullName
-  }
-
-  Write-Host "[jhdf5] Could not find build root for preset '$PresetName'. Checked:"
-  foreach ($candidate in $candidateRoots) {
-    Write-Host "[jhdf5]   $candidate"
-  }
-  return $candidateRoots[1]
-}
-
 function Resolve-ChildBinaryDirs {
   param([string] $BuildRoot)
 
@@ -346,6 +306,11 @@ function Resolve-ChildBinaryDirs {
 
 foreach ($variant in $Variants) {
   $outputVariant = $variant
+  if ($variant -eq "avx512" -and $env:JHDF5_ENABLE_WINDOWS_AVX512 -ne "1") {
+    Write-Warning "Skipping Windows amd64 AVX512 JHDF5 variant. GitHub-hosted Windows runners do not expose AVX512, and HDF5 runs freshly built helper tools such as H5detect.exe during the build. Building those helpers with /arch:AVX512 crashes on non-AVX512 hosts. Set JHDF5_ENABLE_WINDOWS_AVX512=1 only on a self-hosted AVX512-capable runner."
+    continue
+  }
+
   if ($variant -eq "baseline") {
     $outputVariant = "avx2"
     Write-Host "[jhdf5] Variant 'baseline' is deprecated; building the AVX2 target as '$outputVariant'."
@@ -386,11 +351,10 @@ foreach ($variant in $Variants) {
   }
 
   $buildDirName = Resolve-TestBuildPreset -Preset $env:CMAKE_PRESET
-  $buildRoot = Resolve-Hdf5BuildRoot -SourceDir $sourceDir -PresetName $buildDirName
-  Write-Host "[jhdf5] Using HDF5 build root: $buildRoot"
+  $buildRoot = Join-Path $sourceDir "build110\$buildDirName"
   $binaryDirs = Resolve-ChildBinaryDirs -BuildRoot $buildRoot
   if ($binaryDirs.Count -eq 0) {
-    throw "No binary directories or deployable DLLs found under $buildRoot"
+    throw "No build directories found under $buildRoot"
   }
 
   $binaryDir = $binaryDirs[0]
