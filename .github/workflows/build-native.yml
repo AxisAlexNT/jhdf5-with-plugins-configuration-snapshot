@@ -288,10 +288,48 @@ jobs:
       - name: Restore native payload tree
         run: |
           set -euo pipefail
-          find downloaded-native-payloads -type d -path '*/libs/native/jhdf5' -print0 |
-            while IFS= read -r -d '' src; do
-              cp -a "${src}/." libs/native/jhdf5/
-            done
+          mkdir -p libs/native/jhdf5
+          echo "Downloaded native payload layout:"
+          find downloaded-native-payloads -maxdepth 5 -type f | sort | sed 's#^#  #' | head -n 500
+
+          copied=0
+          while IFS= read -r -d '' src; do
+            echo "Restoring native payload tree from ${src}"
+            cp -a "${src}/." libs/native/jhdf5/
+            copied=$((copied + 1))
+          done < <(find downloaded-native-payloads -type d -path '*/libs/native/jhdf5' -print0)
+
+          # actions/upload-artifact can strip common leading path components for single-glob uploads.
+          # Accept both full libs/native/jhdf5 trees and direct platform directories.
+          while IFS= read -r -d '' platform_dir; do
+            name="$(basename "${platform_dir}")"
+            case "${name}" in
+              amd64-Linux|amd64-Linux-generic|amd64-Linux-avx2|amd64-Windows|amd64-Windows-generic|amd64-Windows-avx2|arm64-Linux|x86_64-Mac\ OS\ X|aarch64-Mac\ OS\ X)
+                echo "Restoring direct platform payload ${name} from ${platform_dir}"
+                mkdir -p "libs/native/jhdf5/${name}"
+                cp -a "${platform_dir}/." "libs/native/jhdf5/${name}/"
+                copied=$((copied + 1))
+                ;;
+            esac
+          done < <(find downloaded-native-payloads -type d -print0)
+
+          if [[ -d libs/native/jhdf5/amd64-Windows-generic && ! -d libs/native/jhdf5/amd64-Windows ]]; then
+            cp -a libs/native/jhdf5/amd64-Windows-generic libs/native/jhdf5/amd64-Windows
+          fi
+          if [[ -d libs/native/jhdf5/amd64-Linux-generic && ! -d libs/native/jhdf5/amd64-Linux ]]; then
+            cp -a libs/native/jhdf5/amd64-Linux-generic libs/native/jhdf5/amd64-Linux
+          fi
+
+          echo "Restored native payload tree:"
+          find libs/native/jhdf5 -maxdepth 3 -type f | sort | sed 's#^#  #' | head -n 500
+
+          [[ ${copied} -gt 0 ]] || { echo "::error::No native payload directories were restored from downloaded artifacts."; exit 1; }
+          test -f libs/native/jhdf5/amd64-Linux/libjhdf5.so
+          test -f libs/native/jhdf5/amd64-Linux-avx2/libjhdf5.so
+          test -f libs/native/jhdf5/arm64-Linux/libjhdf5.so
+          test -f libs/native/jhdf5/amd64-Windows/jhdf5.dll
+          test -f "libs/native/jhdf5/aarch64-Mac OS X/libjhdf5.jnilib"
+          test -f "libs/native/jhdf5/x86_64-Mac OS X/libjhdf5.jnilib"
 
       - name: Use public Gradle wrapper distribution
         run: |
@@ -301,12 +339,12 @@ jobs:
             sed -i.bak 's#^distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-4.9-all.zip#' gradle/wrapper/gradle-wrapper.properties
           else
             cat > gradle/wrapper/gradle-wrapper.properties <<'EOF'
-            distributionBase=GRADLE_USER_HOME
-            distributionPath=wrapper/dists
-            distributionUrl=https\://services.gradle.org/distributions/gradle-4.9-all.zip
-            zipStoreBase=GRADLE_USER_HOME
-            zipStorePath=wrapper/dists
-            EOF
+          distributionBase=GRADLE_USER_HOME
+          distributionPath=wrapper/dists
+          distributionUrl=https\://services.gradle.org/distributions/gradle-4.9-all.zip
+          zipStoreBase=GRADLE_USER_HOME
+          zipStorePath=wrapper/dists
+          EOF
           fi
 
       - name: Grant execute permissions
@@ -341,7 +379,7 @@ jobs:
             mkdir -p "${variant_dir}/.payload"
             tmpdir="${variant_dir}/.payload"
             (cd "${tmpdir}" && jar -xf "${GITHUB_WORKSPACE:-$(pwd)}/${jar_file#./}")
-            stage_native="${tmpdir}/libs/native/jhdf5"
+            stage_native="${tmpdir}/native/jhdf5"
             if [[ -d "${stage_native}" ]]; then
               if compgen -G "${stage_native}/*" > /dev/null; then
                 for candidate in "${stage_native}"/*; do
@@ -384,19 +422,19 @@ jobs:
             fi
             case "${variant}" in
               base)
-                if [[ ! -d "${tmpdir}/libs/native/jhdf5/amd64-Linux" ]]; then
+                if [[ ! -d "${tmpdir}/native/jhdf5/amd64-Linux" ]]; then
                   echo "Skipping ${variant} jar: amd64-Linux missing."
                   continue
                 fi
                 ;;
               avx2)
-                if [[ ! -d "${tmpdir}/libs/native/jhdf5/amd64-Linux-avx2" ]]; then
+                if [[ ! -d "${tmpdir}/native/jhdf5/amd64-Linux-avx2" ]]; then
                   echo "Skipping ${variant} jar: amd64-Linux-avx2 missing."
                   continue
                 fi
                 ;;
               avx512)
-                if [[ ! -d "${tmpdir}/libs/native/jhdf5/amd64-Linux-avx512" ]]; then
+                if [[ ! -d "${tmpdir}/native/jhdf5/amd64-Linux-avx512" ]]; then
                   echo "Skipping ${variant} jar: amd64-Linux-avx512 missing."
                   continue
                 fi
@@ -408,7 +446,16 @@ jobs:
 
       - name: Write checksum
         run: |
-          for jar_path in build/libs/jhdf5-*.jar; do
+          set -euo pipefail
+          shopt -s nullglob
+          jars=(build/libs/jhdf5-*.jar build/libs/sis-jhdf5-*.jar)
+          if [[ ${#jars[@]} -eq 0 ]]; then
+            echo "::error::No packaged JHDF5 jars found in build/libs."
+            find build/libs -maxdepth 1 -type f -print | sort || true
+            exit 1
+          fi
+          for jar_path in "${jars[@]}"; do
+            [[ "${jar_path}" == *-sources.jar || "${jar_path}" == *-javadoc.jar ]] && continue
             sha256sum "${jar_path}" > "${jar_path}.sha256"
           done
       - name: Upload packaged jar artifact
@@ -421,21 +468,37 @@ jobs:
           if-no-files-found: error
       - name: Validate packaged jar (post-upload)
         run: |
+          set -euo pipefail
           jar_path="$(find build/libs targets/gradle/libs -maxdepth 1 -type f -name 'sis-jhdf5-*.jar' -not -name '*-sources.jar' -not -name '*-javadoc.jar' -not -name '*-h5ar-cli-*.jar' 2>/dev/null | sort | tail -n 1)"
           if [[ -z "${jar_path}" ]]; then
             echo "Could not find packaged main sis-jhdf5 jar." >&2
             find . -path '*/libs/*.jar' -type f -print | sort >&2 || true
             exit 1
           fi
-          jar tf "${jar_path}" | grep -q '^native/jhdf5/amd64-Linux/libjhdf5.so$'
-          jar tf "${jar_path}" | grep -q '^native/jhdf5/arm64-Linux/libjhdf5.so$'
-          jar tf "${jar_path}" | grep -q '^native/jhdf5/amd64-Windows/jhdf5.dll$'
-          jar tf "${jar_path}" | grep -q '^native/jhdf5/aarch64-Mac OS X/libjhdf5.jnilib$'
-          jar tf "${jar_path}" | grep -q '^native/jhdf5/x86_64-Mac OS X/libjhdf5.jnilib$'
-          jar tf "${jar_path}" | grep -Eq '^resources/libs/osx_arm64/libhdf5\.dylib$|^resources/libs/macos_arm64/libhdf5\.dylib$|^resources/libs/darwin_arm64/libhdf5\.dylib$'
-          jar tf "${jar_path}" | grep -Eq '^resources/libs/osx_64/libhdf5\.dylib$|^resources/libs/macos_64/libhdf5\.dylib$|^resources/libs/darwin_x86_64/libhdf5\.dylib$'
-          jar tf "${jar_path}" | grep -Eq '^resources/libs/osx_arm64/libh5bshuf\.dylib$|^resources/libs/macos_arm64/libh5bshuf\.dylib$|^resources/libs/darwin_arm64/libh5bshuf\.dylib$'
-          jar tf "${jar_path}" | grep -Eq '^resources/libs/osx_64/libh5bshuf\.dylib$|^resources/libs/macos_64/libh5bshuf\.dylib$|^resources/libs/darwin_x86_64/libh5bshuf\.dylib$'
+          echo "Validating ${jar_path}"
+          jar tf "${jar_path}" > build/libs/main-jar.contents.txt
+          grep -q '^native/jhdf5/amd64-Linux/libjhdf5.so$' build/libs/main-jar.contents.txt
+          grep -q '^native/jhdf5/arm64-Linux/libjhdf5.so$' build/libs/main-jar.contents.txt
+          grep -q '^native/jhdf5/amd64-Windows/jhdf5.dll$' build/libs/main-jar.contents.txt
+          grep -q '^native/jhdf5/aarch64-Mac OS X/libjhdf5.jnilib$' build/libs/main-jar.contents.txt
+          grep -q '^native/jhdf5/x86_64-Mac OS X/libjhdf5.jnilib$' build/libs/main-jar.contents.txt
+          grep -Eq '^resources/libs/osx_arm64/libhdf5\.dylib$|^resources/libs/macos_arm64/libhdf5\.dylib$|^resources/libs/darwin_arm64/libhdf5\.dylib$' build/libs/main-jar.contents.txt
+          grep -Eq '^resources/libs/osx_64/libhdf5\.dylib$|^resources/libs/macos_64/libhdf5\.dylib$|^resources/libs/darwin_x86_64/libhdf5\.dylib$' build/libs/main-jar.contents.txt
+          grep -Eq '^resources/libs/osx_arm64/libh5bshuf\.dylib$|^resources/libs/macos_arm64/libh5bshuf\.dylib$|^resources/libs/darwin_arm64/libh5bshuf\.dylib$' build/libs/main-jar.contents.txt
+          grep -Eq '^resources/libs/osx_64/libh5bshuf\.dylib$|^resources/libs/macos_64/libh5bshuf\.dylib$|^resources/libs/darwin_x86_64/libh5bshuf\.dylib$' build/libs/main-jar.contents.txt
+
+          for variant_jar in build/libs/jhdf5-base.jar build/libs/jhdf5-avx2.jar; do
+            [[ -f "${variant_jar}" ]] || { echo "::error::Expected variant jar ${variant_jar} was not created."; exit 1; }
+            echo "Validating ${variant_jar}"
+            jar tf "${variant_jar}" > "${variant_jar}.contents.txt"
+            grep -q '^native/jhdf5/arm64-Linux/libjhdf5.so$' "${variant_jar}.contents.txt"
+            grep -q '^native/jhdf5/aarch64-Mac OS X/libjhdf5.jnilib$' "${variant_jar}.contents.txt"
+            grep -q '^native/jhdf5/x86_64-Mac OS X/libjhdf5.jnilib$' "${variant_jar}.contents.txt"
+          done
+          grep -q '^native/jhdf5/amd64-Linux/libjhdf5.so$' build/libs/jhdf5-base.jar.contents.txt
+          grep -q '^native/jhdf5/amd64-Windows/jhdf5.dll$' build/libs/jhdf5-base.jar.contents.txt
+          grep -q '^native/jhdf5/amd64-Linux-avx2/libjhdf5.so$' build/libs/jhdf5-avx2.jar.contents.txt
+          grep -q '^native/jhdf5/amd64-Windows-avx2/jhdf5.dll$' build/libs/jhdf5-avx2.jar.contents.txt
       - name: Publish jar to GitHub Release
         if: ${{ github.event_name == 'release' }}
         uses: softprops/action-gh-release@v2
