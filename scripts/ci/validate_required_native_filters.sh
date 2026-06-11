@@ -2,21 +2,26 @@
 set -euo pipefail
 
 root="${1:-libs/native/jhdf5}"
+shift || true
 if [[ ! -d "${root}" ]]; then
   echo "Native root does not exist: ${root}" >&2
   exit 1
 fi
 
-required_filters=(bshuf lzf zstd)
-required_dirs=(
-  "amd64-Linux"
-  "amd64-Linux-avx2"
-  "arm64-Linux"
-  "amd64-Windows"
-  "amd64-Windows-avx2"
-  "aarch64-Mac OS X"
-  "x86_64-Mac OS X"
-)
+required_filters=(bshuf lzf lz4 zstd)
+if [[ "$#" -gt 0 ]]; then
+  required_dirs=("$@")
+else
+  required_dirs=(
+    "amd64-Linux"
+    "amd64-Linux-avx2"
+    "arm64-Linux"
+    "amd64-Windows"
+    "amd64-Windows-avx2"
+    "aarch64-Mac OS X"
+    "x86_64-Mac OS X"
+  )
+fi
 
 missing=0
 for platform in "${required_dirs[@]}"; do

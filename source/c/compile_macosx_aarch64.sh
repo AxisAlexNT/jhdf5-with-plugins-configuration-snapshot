@@ -24,7 +24,10 @@ gcc -Wno-error=implicit-function-declaration -m64 -mmacosx-version-min=10.11 -dy
 
 DEPLOY_DIR="../../../libs/native/jhdf5/aarch64-Mac OS X"
 mkdir -p "$DEPLOY_DIR"
-find . -type f \( -name "libhdf5*.dylib" -o -name "libh5*.dylib" -o -name "libh5*.so" -o -name "libhdf5*.so" \) -exec cp -Ppf {} "$DEPLOY_DIR/" \;
+find . -type f \( -name "libhdf5*.dylib" -o -name "libh5*.dylib" \) -exec cp -Ppf {} "$DEPLOY_DIR/" \;
+while IFS= read -r plugin_lib; do
+  cp -Ppf "$plugin_lib" "$DEPLOY_DIR/$(basename "${plugin_lib%.so}.dylib")"
+done < <(find . -type f -name "libh5*.so" -print)
 
 if [ -f libjhdf5.jnilib ]; then
   cp -pf libjhdf5.jnilib "$DEPLOY_DIR"

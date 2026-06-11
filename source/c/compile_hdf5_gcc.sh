@@ -380,6 +380,9 @@ if [[ ! -z $CMAKE_HDF5 ]]; then
 		read -r -a CMAKE_PRESET_EXTRA_ARGS_ARR <<< "$CMAKE_PRESET_EXTRA_ARGS"
 		CMAKE_EXTRA_ARGS+=("${CMAKE_PRESET_EXTRA_ARGS_ARR[@]}")
 	fi
+	if [[ ${#CMAKE_EXTRA_ARGS[@]} -gt 0 ]]; then
+		BUILD_WITH_WORKFLOW=0
+	fi
 	if [[ "$BUILD_WITH_WORKFLOW" -eq 1 ]]; then
 		cmake_args=(--workflow --preset="$CMAKE_PRESET" "${CMAKE_EXTRA_ARGS[@]}" --fresh)
 		if ! cmake "${cmake_args[@]}" > >(tee -a cmake.stdout.log) 2> >(tee -a cmake.stderr.log >&2); then

@@ -6,7 +6,7 @@ on:
       native_cache_version:
         description: "Manual cache/artifact version for native payloads and packaged jars. Bump to force rebuild."
         required: false
-        default: "v1"
+        default: "v2"
       force_native_rebuild:
         description: "Ignore restored native caches and rebuild all native payloads."
         type: boolean
@@ -30,7 +30,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: jhdf5-native-${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.native_cache_version || 'v1' }}
+  group: jhdf5-native-${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.native_cache_version || 'v2' }}
   cancel-in-progress: false
 
 env:
@@ -38,7 +38,8 @@ env:
   HDF5_VERSION: "1.10.11"
   HDF5_CMAKE_ARCHIVE_URL: https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.11/src/CMake-hdf5-1.10.11.zip
   HDF5_CMAKE_ARCHIVE_NAME: CMake-hdf5-1.10.11.zip
-  JHDF5_NATIVE_CACHE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.native_cache_version || 'v1' }}
+  JHDF5_NATIVE_CACHE_SCHEMA: filters-v2
+  JHDF5_NATIVE_CACHE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.native_cache_version || 'v2' }}
   JHDF5_FORCE_NATIVE_REBUILD: ${{ github.event_name == 'workflow_dispatch' && inputs.force_native_rebuild || false }}
 
 jobs:
@@ -59,7 +60,7 @@ jobs:
             libs/native/jhdf5/amd64-Linux
             libs/native/jhdf5/amd64-Linux-generic
             libs/native/jhdf5/amd64-Linux-avx2
-          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-linux-amd64-hdf5-${{ env.HDF5_VERSION }}
+          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_SCHEMA }}-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-linux-amd64-hdf5-${{ env.HDF5_VERSION }}
       - name: Download HDF5 CMake archive
         if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         working-directory: source/c
@@ -73,6 +74,9 @@ jobs:
         run: |
           test -f libs/native/jhdf5/amd64-Linux/libjhdf5.so
           test -f libs/native/jhdf5/amd64-Linux-avx2/libjhdf5.so
+      - name: Validate Linux amd64 required filters
+        shell: bash
+        run: bash scripts/ci/validate_required_native_filters.sh libs/native/jhdf5 amd64-Linux amd64-Linux-avx2
       - name: Save Linux amd64 native cache
         if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         uses: actions/cache/save@v5
@@ -81,7 +85,7 @@ jobs:
             libs/native/jhdf5/amd64-Linux
             libs/native/jhdf5/amd64-Linux-generic
             libs/native/jhdf5/amd64-Linux-avx2
-          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-linux-amd64-hdf5-${{ env.HDF5_VERSION }}
+          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_SCHEMA }}-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-linux-amd64-hdf5-${{ env.HDF5_VERSION }}
       - name: Upload Linux amd64 generic native payload
         uses: actions/upload-artifact@v6
         with:
@@ -127,7 +131,7 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: libs/native/jhdf5/arm64-Linux
-          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-linux-arm64-hdf5-${{ env.HDF5_VERSION }}
+          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_SCHEMA }}-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-linux-arm64-hdf5-${{ env.HDF5_VERSION }}
       - name: Download HDF5 CMake archive
         if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         working-directory: source/c
@@ -139,12 +143,15 @@ jobs:
         run: ./source/c/build_linux_manylinux.sh arm64
       - name: Smoke-check native payload
         run: test -f libs/native/jhdf5/arm64-Linux/libjhdf5.so
+      - name: Validate Linux arm64 required filters
+        shell: bash
+        run: bash scripts/ci/validate_required_native_filters.sh libs/native/jhdf5 arm64-Linux
       - name: Save Linux arm64 native cache
         if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         uses: actions/cache/save@v5
         with:
           path: libs/native/jhdf5/arm64-Linux
-          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-linux-arm64-hdf5-${{ env.HDF5_VERSION }}
+          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_SCHEMA }}-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-linux-arm64-hdf5-${{ env.HDF5_VERSION }}
       - name: Upload Linux arm64 native payload
         uses: actions/upload-artifact@v6
         with:
@@ -185,7 +192,7 @@ jobs:
             libs/native/jhdf5/amd64-Windows
             libs/native/jhdf5/amd64-Windows-generic
             libs/native/jhdf5/amd64-Windows-avx2
-          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-windows-amd64-hdf5-${{ env.HDF5_VERSION }}
+          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_SCHEMA }}-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-windows-amd64-hdf5-${{ env.HDF5_VERSION }}
       - name: Download HDF5 CMake archive
         if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         shell: pwsh
@@ -205,6 +212,9 @@ jobs:
         run: |
           if (-not (Test-Path 'libs\native\jhdf5\amd64-Windows\jhdf5.dll')) { throw 'amd64-Windows\jhdf5.dll missing' }
           if (-not (Test-Path 'libs\native\jhdf5\amd64-Windows-avx2\jhdf5.dll')) { throw 'amd64-Windows-avx2\jhdf5.dll missing' }
+      - name: Validate Windows amd64 required filters
+        shell: bash
+        run: bash scripts/ci/validate_required_native_filters.sh libs/native/jhdf5 amd64-Windows amd64-Windows-avx2
       - name: Save Windows amd64 native cache
         if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         uses: actions/cache/save@v5
@@ -213,7 +223,7 @@ jobs:
             libs/native/jhdf5/amd64-Windows
             libs/native/jhdf5/amd64-Windows-generic
             libs/native/jhdf5/amd64-Windows-avx2
-          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-windows-amd64-hdf5-${{ env.HDF5_VERSION }}
+          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_SCHEMA }}-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-windows-amd64-hdf5-${{ env.HDF5_VERSION }}
       - name: Upload Windows amd64 generic native payload
         uses: actions/upload-artifact@v6
         with:
@@ -253,7 +263,7 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: "libs/native/jhdf5/aarch64-Mac OS X"
-          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-macos-arm64-hdf5-${{ env.HDF5_VERSION }}
+          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_SCHEMA }}-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-macos-arm64-hdf5-${{ env.HDF5_VERSION }}
       - name: Install CMake and Fortran toolchain
         if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         run: |
@@ -280,12 +290,15 @@ jobs:
           ./compile_macosx_aarch64.sh
       - name: Smoke-check macOS arm64 native payload
         run: test -f "libs/native/jhdf5/aarch64-Mac OS X/libjhdf5.jnilib"
+      - name: Validate macOS arm64 required filters
+        shell: bash
+        run: bash scripts/ci/validate_required_native_filters.sh libs/native/jhdf5 "aarch64-Mac OS X"
       - name: Save macOS arm64 native cache
         if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         uses: actions/cache/save@v5
         with:
           path: "libs/native/jhdf5/aarch64-Mac OS X"
-          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-macos-arm64-hdf5-${{ env.HDF5_VERSION }}
+          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_SCHEMA }}-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-macos-arm64-hdf5-${{ env.HDF5_VERSION }}
       - name: Upload macOS arm64 native payload
         uses: actions/upload-artifact@v6
         with:
@@ -323,7 +336,7 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: "libs/native/jhdf5/x86_64-Mac OS X"
-          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-macos-x86_64-hdf5-${{ env.HDF5_VERSION }}
+          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_SCHEMA }}-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-macos-x86_64-hdf5-${{ env.HDF5_VERSION }}
       - name: Install CMake and Fortran toolchain
         if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         run: |
@@ -350,12 +363,15 @@ jobs:
           ./compile_macosx_x86_64.sh
       - name: Smoke-check macOS x86_64 native payload
         run: test -f "libs/native/jhdf5/x86_64-Mac OS X/libjhdf5.jnilib"
+      - name: Validate macOS x86_64 required filters
+        shell: bash
+        run: bash scripts/ci/validate_required_native_filters.sh libs/native/jhdf5 "x86_64-Mac OS X"
       - name: Save macOS x86_64 native cache
         if: ${{ steps.native-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         uses: actions/cache/save@v5
         with:
           path: "libs/native/jhdf5/x86_64-Mac OS X"
-          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-macos-x86_64-hdf5-${{ env.HDF5_VERSION }}
+          key: jhdf5-native-${{ env.JHDF5_NATIVE_CACHE_SCHEMA }}-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-macos-x86_64-hdf5-${{ env.HDF5_VERSION }}
       - name: Upload macOS x86_64 native payload
         uses: actions/upload-artifact@v6
         with:
@@ -399,7 +415,7 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: build/libs
-          key: jhdf5-packaged-jar-v3-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-hdf5-${{ env.HDF5_VERSION }}
+          key: jhdf5-packaged-jar-v4-${{ env.JHDF5_NATIVE_CACHE_SCHEMA }}-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-hdf5-${{ env.HDF5_VERSION }}
       - name: Download native payloads
         if: ${{ steps.packaged-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         uses: actions/download-artifact@v6
@@ -758,7 +774,7 @@ jobs:
         uses: actions/cache/save@v5
         with:
           path: build/libs
-          key: jhdf5-packaged-jar-v3-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-hdf5-${{ env.HDF5_VERSION }}
+          key: jhdf5-packaged-jar-v4-${{ env.JHDF5_NATIVE_CACHE_SCHEMA }}-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-hdf5-${{ env.HDF5_VERSION }}
       - name: Publish jar to GitHub Release
         if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '') }}
         uses: softprops/action-gh-release@v2
