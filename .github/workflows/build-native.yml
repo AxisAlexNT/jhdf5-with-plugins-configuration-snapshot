@@ -160,7 +160,10 @@ jobs:
           echo "::warning::Windows amd64 HDF5 tests failed; native binaries were still built and uploaded. Review logs for failures."
       - name: Smoke-check Windows native payload (post-upload)
         shell: pwsh
-        run: Test-Path libs\native\jhdf5\amd64-Windows\jhdf5.dll
+        run: |
+          if (-not (Test-Path libs\native\jhdf5\amd64-Windows\jhdf5.dll)) {
+            throw "Windows generic jhdf5.dll was not produced."
+          }
 
   macos-arm64:
     name: macOS arm64 natives

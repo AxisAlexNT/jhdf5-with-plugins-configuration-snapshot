@@ -43,7 +43,8 @@ function Resolve-TestBuildDirectory {
     $outputVariant = "avx2"
   }
 
-  $buildRoot = Join-Path $BuildRoot "CMake-hdf5-1.10.11-${outputVariant}\hdf5-1.10.11"
+  $preparedRoot = Join-Path $BuildRoot "CMake-hdf5-1.10.11-${outputVariant}"
+  $sourceRoot = Join-Path $preparedRoot "hdf5-1.10.11"
   $candidatePresets = @(
     "hict-StdShar-MSVC",
     "ci-StdShar-MSVC",
@@ -53,12 +54,28 @@ function Resolve-TestBuildDirectory {
     "ci-StdShar-MSVC-notest"
   )
   foreach ($candidate in $candidatePresets) {
-    $testDir = Join-Path $buildRoot "build110\${candidate}"
-    if (Test-Path $testDir) {
-      return $testDir
+    $candidateDirs = @(
+      (Join-Path $preparedRoot "build110\${candidate}"),
+      (Join-Path $sourceRoot "build110\${candidate}"),
+      (Join-Path $preparedRoot "build\${candidate}"),
+      (Join-Path $sourceRoot "build\${candidate}")
+    )
+    foreach ($testDir in $candidateDirs) {
+      if (Test-Path $testDir) {
+        return $testDir
+      }
     }
   }
-  return Join-Path $buildRoot "build110\hict-StdShar-MSVC"
+
+  $discovered = Get-ChildItem $preparedRoot -Directory -Recurse -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -like "*MSVC*" -and ($_.FullName -match '\\build110\\' -or $_.FullName -match '\\build\\') } |
+    Sort-Object FullName |
+    Select-Object -First 1
+  if ($discovered) {
+    return $discovered.FullName
+  }
+
+  return Join-Path $preparedRoot "build110\hict-StdShar-MSVC"
 }
 
 function Run-TestPreset {
@@ -89,7 +106,7 @@ function Run-TestPreset {
   }
 }
 
-Import-DeveloperCommandPromptEnvironment
+Invoke-DeveloperCommandPromptEnvironment
 
 $hasFailure = $false
 foreach ($variant in $Variants) {
