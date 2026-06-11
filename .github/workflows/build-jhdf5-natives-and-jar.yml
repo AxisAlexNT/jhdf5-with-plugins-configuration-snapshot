@@ -507,7 +507,7 @@ jobs:
           test -s libs/build/ecj-4.6.1.jar
       - name: Build JHDF5 jar
         if: ${{ steps.packaged-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
-        run: ./gradlew --no-daemon jar
+        run: ./gradlew --no-daemon jar slimJar nativesTar
       - name: Stage Gradle jar outputs
         if: ${{ steps.packaged-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         run: |
@@ -523,7 +523,7 @@ jobs:
               if [[ "$(realpath "${artifact}")" != "$(realpath -m "${dest}")" ]]; then
                 cp -f "${artifact}" "${dest}"
               fi
-            done < <(find "${dir}" -maxdepth 1 -type f \( -name '*.jar' -o -name '*.pom' \) -print0)
+            done < <(find "${dir}" -maxdepth 1 -type f \( -name '*.jar' -o -name '*.pom' -o -name '*.tar.gz' \) -print0)
           done
           echo "Staged jar outputs:"
           find build/libs -maxdepth 1 -type f -print | sort
@@ -614,8 +614,25 @@ jobs:
           # while the versioned files remain available for manual override/cache busting.
           cp -f "build/libs/jhdf5-base-${JHDF5_NATIVE_CACHE_VERSION}.jar" "build/libs/sis-jhdf5-19.04.1.jar"
           cp -f "build/libs/jhdf5-avx2-${JHDF5_NATIVE_CACHE_VERSION}.jar" "build/libs/sis-jhdf5-19.04.1-avx2.jar"
+          slim_candidate="$(find build/libs targets/gradle/libs -maxdepth 1 -type f -name 'sis-jhdf5-*-slim.jar' 2>/dev/null | sort | tail -n 1 || true)"
+          if [[ -n "${slim_candidate}" && -f "${slim_candidate}" ]]; then
+            if [[ "$(realpath "${slim_candidate}")" != "$(realpath -m build/libs/sis-jhdf5-19.04.1-slim.jar)" ]]; then
+              cp -f "${slim_candidate}" "build/libs/sis-jhdf5-19.04.1-slim.jar"
+            fi
+          else
+            echo "::warning::Gradle did not produce a slim JHDF5 jar; split downstream packaging will use the legacy fat jar."
+          fi
+          natives_candidate="$(find build/libs targets/gradle/libs -maxdepth 1 -type f -name 'sis-jhdf5-*-natives.tar.gz' 2>/dev/null | sort | tail -n 1 || true)"
+          if [[ -n "${natives_candidate}" && -f "${natives_candidate}" ]]; then
+            if [[ "$(realpath "${natives_candidate}")" != "$(realpath -m build/libs/sis-jhdf5-19.04.1-natives.tar.gz)" ]]; then
+              cp -f "${natives_candidate}" "build/libs/sis-jhdf5-19.04.1-natives.tar.gz"
+            fi
+          else
+            echo "::warning::Gradle did not produce a JHDF5 natives tarball; split downstream packaging will use the legacy fat jar."
+          fi
           echo "Packaged JHDF5 jars:"
           find build/libs -maxdepth 1 -type f -name '*.jar' -print | sort
+          find build/libs -maxdepth 1 -type f -name '*.tar.gz' -print | sort
       - name: Write checksum
         if: ${{ steps.packaged-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
         run: |
@@ -623,6 +640,9 @@ jobs:
           shopt -s nullglob
           for jar_path in build/libs/*.jar; do
             sha256sum "${jar_path}" > "${jar_path}.sha256"
+          done
+          for archive_path in build/libs/*.tar.gz; do
+            sha256sum "${archive_path}" > "${archive_path}.sha256"
           done
       - name: Save packaged jar cache
         if: ${{ steps.packaged-cache.outputs.cache-hit != 'true' || env.JHDF5_FORCE_NATIVE_REBUILD == 'true' }}
@@ -636,6 +656,7 @@ jobs:
           name: jhdf5-packaged-jar-${{ env.JHDF5_NATIVE_CACHE_VERSION }}
           path: |
             build/libs/*.jar
+            build/libs/*.tar.gz
             build/libs/*.sha256
           if-no-files-found: error
       - name: Validate packaged jar
@@ -662,10 +683,27 @@ jobs:
             jar tf "${avx2_path}" | grep -q '^libs/native/jhdf5/amd64-Linux-avx2/libjhdf5.so$\|^native/jhdf5/amd64-Linux-avx2/libjhdf5.so$'
             jar tf "${avx2_path}" | grep -q '^libs/native/jhdf5/amd64-Windows-avx2/jhdf5.dll$\|^native/jhdf5/amd64-Windows-avx2/jhdf5.dll$'
           fi
+          slim_path="build/libs/sis-jhdf5-19.04.1-slim.jar"
+          natives_path="build/libs/sis-jhdf5-19.04.1-natives.tar.gz"
+          if [[ -f "${slim_path}" && -f "${natives_path}" ]]; then
+            echo "Validating split artifacts ${slim_path} + ${natives_path}"
+            ! jar tf "${slim_path}" | grep -q '^native/jhdf5/\|^libs/native/jhdf5/' || {
+              echo "Slim JHDF5 jar unexpectedly contains native payloads." >&2
+              exit 1
+            }
+            tar -tzf "${natives_path}" | grep -q '^native/jhdf5/amd64-Linux/libjhdf5.so$'
+            tar -tzf "${natives_path}" | grep -q '^native/jhdf5/arm64-Linux/libjhdf5.so$'
+            tar -tzf "${natives_path}" | grep -q '^native/jhdf5/amd64-Windows/jhdf5.dll$'
+            tar -tzf "${natives_path}" | grep -q '^native/jhdf5/aarch64-Mac OS X/libjhdf5.jnilib$'
+            tar -tzf "${natives_path}" | grep -q '^native/jhdf5/x86_64-Mac OS X/libjhdf5.jnilib$'
+          else
+            echo "::warning::Split JHDF5 artifacts are incomplete; legacy fat jar artifacts remain available."
+          fi
       - name: Publish jar to GitHub Release
         if: ${{ github.event_name == 'release' }}
         uses: softprops/action-gh-release@v2
         with:
           files: |
             build/libs/*.jar
+            build/libs/*.tar.gz
             build/libs/*.sha256

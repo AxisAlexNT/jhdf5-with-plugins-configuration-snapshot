@@ -93,6 +93,33 @@ jar {
     }
 }
 
+task slimJar(type: Jar, dependsOn: classes) {
+    baseName "${project.group}-jhdf5"
+    classifier "slim"
+    exclude '**/HDF5ArchiverMain*.class'
+    from sourceSets.main.output
+    from('targets/dist') {
+        include 'BUILD*INFO'
+    }
+
+    manifest {
+        attributes 'Main-Class': 'ch.systemsx.cisd.base.BuildAndEnvironmentInfo'
+        attributes 'Class-Path': configurations.runtime.filter { !(it.getName().contains("-sources") || it.getName().startsWith("cisd-args4j")) }.collect { it.getName() }.join(' ')
+    }
+}
+
+task nativesTar(type: Tar) {
+    baseName "${project.group}-jhdf5"
+    classifier "natives"
+    extension "tar.gz"
+    compression = Compression.GZIP
+    includeEmptyDirs = false
+
+    from("libs") {
+        include 'native/jhdf5/**'
+    }
+}
+
 task h5arCLIJar(type: Jar, dependsOn: [jar]) {
     archiveName "${project.group}-jhdf5-h5ar-cli-${version}.jar"
     from files(sourceSets.main.output.classesDir) {
