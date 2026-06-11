@@ -266,6 +266,44 @@ function Resolve-BuildBinaryDir {
   return (Join-Path $BuildRoot "bin")
 }
 
+function Resolve-ChildBinaryDirs {
+  param([string] $BuildRoot)
+
+  $paths = New-Object System.Collections.Generic.List[string]
+  $candidateDirectories = @(
+    "Release",
+    "Debug",
+    "RelWithDebInfo",
+    "MinSizeRel",
+    "bin",
+    "bin\Release",
+    "bin\Debug",
+    "bin\RelWithDebInfo",
+    "bin\MinSizeRel"
+  )
+
+  foreach ($dir in $candidateDirectories) {
+    $candidate = Join-Path $BuildRoot $dir
+    if (Test-Path $candidate) {
+      $paths.Add($candidate)
+    }
+  }
+
+  foreach ($dll in Get-ChildItem $BuildRoot -Recurse -File -Filter "*.dll" -ErrorAction SilentlyContinue |
+    Where-Object {
+      $_.FullName -notmatch '\\CMakeFiles\\' -and
+      $_.FullName -notmatch '\\_deps\\' -and
+      $_.DirectoryName -like "*\*"
+    } ) {
+    $dir = $dll.DirectoryName
+    if (-not $paths.Contains($dir)) {
+      $paths.Add($dir)
+    }
+  }
+
+  return ,$paths
+}
+
 foreach ($variant in $Variants) {
   $outputVariant = $variant
   if ($variant -eq "baseline") {
@@ -309,7 +347,15 @@ foreach ($variant in $Variants) {
 
   $buildDirName = Resolve-TestBuildPreset -Preset $env:CMAKE_PRESET
   $buildRoot = Join-Path $sourceDir "build110\$buildDirName"
-  $binaryDir = Resolve-BuildBinaryDir -BuildRoot $buildRoot
+  $binaryDirs = Resolve-ChildBinaryDirs -BuildRoot $buildRoot
+  if ($binaryDirs.Count -eq 0) {
+    throw "No build directories found under $buildRoot"
+  }
+
+  $binaryDir = $binaryDirs[0]
+  if (-not (Test-Path $binaryDir)) {
+    throw "Cannot resolve a readable binary directory under $buildRoot"
+  }
 
   if ($RunTests) {
     Run-Hdf5TestSuite -BuildRoot $buildRoot -Variant $outputVariant
@@ -317,7 +363,18 @@ foreach ($variant in $Variants) {
 
   $deployDir = Join-Path $DeployRoot "amd64-Windows-$outputVariant"
   New-Item -ItemType Directory -Force -Path $deployDir | Out-Null
-  Get-ChildItem $binaryDir -Filter "*.dll" | Copy-Item -Destination $deployDir -Force
+  $copied = @()
+  foreach ($dir in $binaryDirs) {
+    $dlls = Get-ChildItem $dir -Filter "*.dll" -File -ErrorAction SilentlyContinue |
+      Where-Object { $_.Name -like "*hdf5*.dll" -or $_.Name -like "hdf5*.dll" -or $_.Name -like "jhdf5*.dll" }
+    foreach ($dll in $dlls) {
+      Copy-Item $dll.FullName -Destination $deployDir -Force
+      $copied += $dll.Name
+    }
+  }
+  if ($copied.Count -eq 0) {
+    throw "No HDF5 DLLs found for variant '$outputVariant' under $buildRoot"
+  }
 
   $builtPluginCount = 0
   $builtPluginDirs = @(
@@ -327,7 +384,7 @@ foreach ($variant in $Variants) {
   )
   foreach ($pluginDir in $builtPluginDirs) {
     if (Test-Path $pluginDir) {
-      foreach ($plugin in Get-ChildItem $pluginDir -File | Where-Object { $_.Name -like "libh5*.dll" -or $_.Name -like "blosc*.dll" -or $_.Name -like "libblosc*.dll" }) {
+      foreach ($plugin in Get-ChildItem $pluginDir -File -Filter "*.dll" | Where-Object { $_.Name -like "libh5*.dll" -or $_.Name -like "blosc*.dll" -or $_.Name -like "libblosc*.dll" }) {
         Copy-Item $plugin.FullName -Destination $deployDir -Force
         $builtPluginCount += 1
       }
@@ -341,6 +398,20 @@ foreach ($variant in $Variants) {
     Get-ChildItem $legacyPluginDir -Filter "*blosc*.dll" -File | Copy-Item -Destination $deployDir -Force
   } else {
     Write-Host "[jhdf5] Deployed $builtPluginCount freshly built HDF5 compression plugin DLLs to $deployDir"
+    if ($builtPluginCount -eq 0) {
+      $allPlugins = Get-ChildItem $buildRoot -Recurse -File -Filter "*.dll" -ErrorAction SilentlyContinue |
+        Where-Object {
+          $_.Name -like "libh5*.dll" -or $_.Name -like "blosc*.dll" -or $_.Name -like "libblosc*.dll" -or $_.Name -like "h5*.dll" -or $_.Name -like "jh5*.dll"
+        } |
+        Where-Object { $_.FullName -notmatch '\\_deps\\' -and $_.FullName -notmatch '\\CMakeFiles\\' }
+      foreach ($plugin in $allPlugins) {
+        Copy-Item $plugin.FullName -Destination $deployDir -Force
+        $builtPluginCount += 1
+      }
+      if ($builtPluginCount -gt 0) {
+        Write-Host "[jhdf5] Collected $builtPluginCount plugin DLLs from recursive build scan under $buildRoot"
+      }
+    }
   }
 
   if (Test-Path (Join-Path $deployDir "hdf5_java.dll")) {
