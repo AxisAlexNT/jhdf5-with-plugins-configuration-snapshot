@@ -93,6 +93,14 @@ jar {
     }
 }
 
+task normalizeNativeLibraryAliases(type: Exec) {
+    onlyIf {
+        file("libs/native/jhdf5").isDirectory()
+    }
+    executable = "bash"
+    args "scripts/ci/normalize_native_library_aliases.sh", "libs/native/jhdf5"
+}
+
 task slimJar(type: Jar, dependsOn: classes) {
     baseName "${project.group}-jhdf5"
     classifier "slim"
@@ -108,7 +116,7 @@ task slimJar(type: Jar, dependsOn: classes) {
     }
 }
 
-task nativesTar(type: Tar) {
+task nativesTar(type: Tar, dependsOn: normalizeNativeLibraryAliases) {
     baseName "${project.group}-jhdf5"
     classifier "natives"
     extension "tar.gz"
