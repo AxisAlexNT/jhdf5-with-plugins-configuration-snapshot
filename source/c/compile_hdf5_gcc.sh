@@ -333,7 +333,7 @@ if [[ ! -z $CMAKE_HDF5 ]]; then
 		tar_tmp="$(mktemp -d)"
 		tar -xzf "$tarball" -C "$tar_tmp"
 		while IFS= read -r zutil_file; do
-			perl -0pi -e 's/^[ \t]*#[ \t]*define[ \t]+fdopen\(fd,mode\)[ \t]+NULL[ \t]*\/\*[ \t]*No fdopen\(\)[ \t]*\*\/[ \t]*$/\/\* fdopen is provided by supported macOS SDKs. \*\//mg' "$zutil_file"
+			perl -0pi -e 's/^[^\S\r\n]*#[^\S\r\n]*define[^\S\r\n]+fdopen\([^)\r\n]+\)[^\r\n]*NULL[^\r\n]*(?:\r?\n)/\/\* fdopen is provided by supported macOS SDKs. \*\/\n/mg' "$zutil_file"
 			patched=1
 		done < <(find "$tar_tmp" -type f -name zutil.h -print)
 		if [[ "$patched" -eq 1 ]]; then
@@ -346,6 +346,18 @@ if [[ ! -z $CMAKE_HDF5 ]]; then
 			echo "Patched fdopen fallback in $(basename "$tarball")"
 		fi
 		rm -rf "$tar_tmp"
+	}
+	patch_fdopen_in_tree() {
+		local tree_root="$1"
+		local patched=0
+		while IFS= read -r zutil_file; do
+			if grep -Eq 'define[[:space:]]+fdopen\(.*NULL' "$zutil_file"; then
+				perl -0pi -e 's/^[^\S\r\n]*#[^\S\r\n]*define[^\S\r\n]+fdopen\([^)\r\n]+\)[^\r\n]*NULL[^\r\n]*(?:\r?\n)/\/\* fdopen is provided by supported macOS SDKs. \*\/\n/mg' "$zutil_file"
+				echo "Patched fdopen fallback in $zutil_file"
+				patched=1
+			fi
+		done < <(find "$tree_root" -type f -name zutil.h -print 2>/dev/null)
+		return 0
 	}
 	patch_hdf5_plugin_sources() {
 		local plugin_root="$1"
@@ -432,11 +444,13 @@ if [[ ! -z $CMAKE_HDF5 ]]; then
 			BUILD_WITH_WORKFLOW=0
 			cmake_args=(--preset="$CMAKE_PRESET" "${CMAKE_EXTRA_ARGS[@]}" --fresh)
 			cmake "${cmake_args[@]}" > >(tee -a cmake.stdout.log) 2> >(tee -a cmake.stderr.log >&2)
+			patch_fdopen_in_tree "$SRCDIR/../build110"
 			cmake --build --preset="$CMAKE_PRESET" > >(tee -a cmake.stdout.log) 2> >(tee -a cmake.stderr.log >&2)
 		fi
 	else
 		cmake_args=(--preset="$CMAKE_PRESET" "${CMAKE_EXTRA_ARGS[@]}" --fresh)
 		cmake "${cmake_args[@]}" > >(tee -a cmake.stdout.log) 2> >(tee -a cmake.stderr.log >&2)
+		patch_fdopen_in_tree "$SRCDIR/../build110"
 		cmake --build --preset="$CMAKE_PRESET" > >(tee -a cmake.stdout.log) 2> >(tee -a cmake.stderr.log >&2)
 	fi
 	cd ..
