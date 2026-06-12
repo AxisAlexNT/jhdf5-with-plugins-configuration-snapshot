@@ -618,7 +618,7 @@ jobs:
             fi
 
             for candidate in "${stage_native}"/*; do
-              [[ -e "${candidate}" ]] || continue
+              [[ -e "${candidate}" || -L "${candidate}" ]] || continue
               candidate_name="$(basename "${candidate}")"
               keep="false"
               case "${candidate_name}" in
