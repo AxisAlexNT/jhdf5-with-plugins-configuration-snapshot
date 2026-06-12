@@ -145,15 +145,11 @@ if [ -f libjhdf5.so ]; then
     -exec cp -Ppf {} "$JHDF5_DEPLOY_DIR/" \;
 
   BUILT_PLUGIN_COUNT=0
-  for PLUGIN_OUTPUT_DIR in "$BDIR/plugins" "$BDIR/bin"; do
-    if [[ -d "$PLUGIN_OUTPUT_DIR" ]]; then
-      while IFS= read -r PLUGIN_LIB; do
-        cp -Ppf "$PLUGIN_LIB" "$JHDF5_DEPLOY_DIR/"
-        BUILT_PLUGIN_COUNT=$((BUILT_PLUGIN_COUNT + 1))
-      done < <(find "$PLUGIN_OUTPUT_DIR" -maxdepth 1 \( -type f -o -type l \) \
-        \( -name "libh5*.so*" -o -name "libblosc*.so*" \) -print)
-    fi
-  done
+  while IFS= read -r PLUGIN_LIB; do
+    cp -Ppf "$PLUGIN_LIB" "$JHDF5_DEPLOY_DIR/"
+    BUILT_PLUGIN_COUNT=$((BUILT_PLUGIN_COUNT + 1))
+  done < <(find "$BDIR" \( -type f -o -type l \) \
+    \( -name "libh5*.so*" -o -name "libblosc*.so*" \) -print | sort -u)
 
   LEGACY_PLUGIN_DIR="$SCRIPT_PATH/../../libs/native/jhdf5/arm64-Linux"
   if [[ "$BUILT_PLUGIN_COUNT" -eq 0 && -d "$LEGACY_PLUGIN_DIR" ]]; then

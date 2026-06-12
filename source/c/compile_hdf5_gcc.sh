@@ -322,11 +322,20 @@ if [[ ! -z $CMAKE_HDF5 ]]; then
 	fi
 	cp -af ../*tar.gz "$SRCDIR/../"
 	PLUGIN_TMPDIR="$(mktemp -d)"
+	patch_hdf5_plugin_sources() {
+		local plugin_root="$1"
+		local plugin_cmake="${plugin_root}/CMakeLists.txt"
+		if [[ -f "$plugin_cmake" ]]; then
+			perl -0pi -e 's/# LZ4 filter\nif \(NOT MINGW\).*?\nendif \(\)\n\n# LZF filter/# LZ4 filter\nif (NOT MINGW)\n  FILTER_OPTION (LZ4)\nelse ()\n  set (ENABLE_LZ4 OFF CACHE BOOL "" FORCE)\nendif ()\n\n# LZF filter/s' "$plugin_cmake"
+		fi
+	}
 	if [[ -f "../hdf5_plugins-release-1_10_11.zip" ]]; then
 		unzip -q "../hdf5_plugins-release-1_10_11.zip" -d "$PLUGIN_TMPDIR"
+		patch_hdf5_plugin_sources "$PLUGIN_TMPDIR/hdf5_plugins-release-1_10_11"
 		tar -C "$PLUGIN_TMPDIR" -czf "$SRCDIR/../hdf5_plugins.tar.gz" hdf5_plugins-release-1_10_11
 	elif [[ -f "$SRCDIR/../hdf5_plugins-master.zip" ]]; then
 		unzip -q "$SRCDIR/../hdf5_plugins-master.zip" -d "$PLUGIN_TMPDIR"
+		patch_hdf5_plugin_sources "$PLUGIN_TMPDIR/hdf5_plugins-master"
 		tar -C "$PLUGIN_TMPDIR" -czf "$SRCDIR/../hdf5_plugins.tar.gz" hdf5_plugins-master
 	else
 		rm -rf "$PLUGIN_TMPDIR"
@@ -362,8 +371,11 @@ if [[ ! -z $CMAKE_HDF5 ]]; then
 	CMAKE_EXTRA_ARGS=()
 	PLUGIN_TAR="$SRCDIR/../hdf5_plugins.tar.gz"
 	if [[ -f "$PLUGIN_TAR" ]]; then
+		PLUGIN_TAR_DIR="$(dirname "$PLUGIN_TAR")"
+		PLUGIN_TAR_NAME="$(basename "$PLUGIN_TAR")"
 		CMAKE_EXTRA_ARGS+=(
-			"-DPLUGIN_TGZ_NAME:STRING=$PLUGIN_TAR"
+			"-DPLUGIN_TGZ_NAME:STRING=$PLUGIN_TAR_NAME"
+			"-DTGZPATH:PATH=$PLUGIN_TAR_DIR/"
 			"-DHDF5_ALLOW_EXTERNAL_SUPPORT:STRING=TGZ"
 			"-DHDF5_ENABLE_PLUGIN_SUPPORT:BOOL=ON"
 			"-DENABLE_LZF:BOOL=ON"
