@@ -322,6 +322,31 @@ if [[ ! -z $CMAKE_HDF5 ]]; then
 	fi
 	cp -af ../*tar.gz "$SRCDIR/../"
 	PLUGIN_TMPDIR="$(mktemp -d)"
+	patch_fdopen_in_tarball() {
+		local tarball="$1"
+		if [[ ! -f "$tarball" ]]; then
+			return 0
+		fi
+
+		local tar_tmp
+		local patched=0
+		tar_tmp="$(mktemp -d)"
+		tar -xzf "$tarball" -C "$tar_tmp"
+		while IFS= read -r zutil_file; do
+			perl -0pi -e 's/^[ \t]*#[ \t]*define[ \t]+fdopen\(fd,mode\)[ \t]+NULL[ \t]*\/\*[ \t]*No fdopen\(\)[ \t]*\*\/[ \t]*$/\/\* fdopen is provided by supported macOS SDKs. \*\//mg' "$zutil_file"
+			patched=1
+		done < <(find "$tar_tmp" -type f -name zutil.h -print)
+		if [[ "$patched" -eq 1 ]]; then
+			local entries=()
+			local entry
+			while IFS= read -r entry; do
+				entries+=("${entry#"$tar_tmp"/}")
+			done < <(find "$tar_tmp" -mindepth 1 -maxdepth 1 -print)
+			tar -C "$tar_tmp" -czf "$tarball" "${entries[@]}"
+			echo "Patched fdopen fallback in $(basename "$tarball")"
+		fi
+		rm -rf "$tar_tmp"
+	}
 	patch_hdf5_plugin_sources() {
 		local plugin_root="$1"
 		local plugin_cmake="${plugin_root}/CMakeLists.txt"
@@ -329,21 +354,11 @@ if [[ ! -z $CMAKE_HDF5 ]]; then
 			perl -0pi -e 's/# LZ4 filter\nif \(NOT MINGW\).*?\nendif \(\)\n\n# LZF filter/# LZ4 filter\nif (NOT MINGW)\n  FILTER_OPTION (LZ4)\nelse ()\n  set (ENABLE_LZ4 OFF CACHE BOOL "" FORCE)\nendif ()\n\n# LZF filter/s' "$plugin_cmake"
 		fi
 		local blosc_tgz="${plugin_root}/libs/c-blosc.tar.gz"
-		if [[ -f "$blosc_tgz" ]]; then
-			local blosc_tmp
-			blosc_tmp="$(mktemp -d)"
-			tar -xzf "$blosc_tgz" -C "$blosc_tmp"
-			while IFS= read -r zutil_file; do
-				perl -0pi -e 's/^[ \t]*#[ \t]*define[ \t]+fdopen\(fd,mode\)[ \t]+NULL[ \t]*\/\*[ \t]*No fdopen\(\)[ \t]*\*\/[ \t]*$/\/\* fdopen is provided by supported macOS SDKs. \*\//mg' "$zutil_file"
-			done < <(find "$blosc_tmp" -type f -name zutil.h -print)
-			local blosc_root
-			blosc_root="$(find "$blosc_tmp" -mindepth 1 -maxdepth 1 -type d | sed -n '1p')"
-			if [[ -n "$blosc_root" ]]; then
-				tar -C "$blosc_tmp" -czf "$blosc_tgz" "$(basename "$blosc_root")"
-			fi
-			rm -rf "$blosc_tmp"
-		fi
+		patch_fdopen_in_tarball "$blosc_tgz"
 	}
+	while IFS= read -r source_tarball; do
+		patch_fdopen_in_tarball "$source_tarball"
+	done < <(find "$SRCDIR/.." -maxdepth 1 -type f -name '*.tar.gz' -print)
 	if [[ -f "../hdf5_plugins-release-1_10_11.zip" ]]; then
 		unzip -q "../hdf5_plugins-release-1_10_11.zip" -d "$PLUGIN_TMPDIR"
 		patch_hdf5_plugin_sources "$PLUGIN_TMPDIR/hdf5_plugins-release-1_10_11"
