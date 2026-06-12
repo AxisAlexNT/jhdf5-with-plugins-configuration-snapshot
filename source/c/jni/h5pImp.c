@@ -5930,7 +5930,7 @@ Java_hdf_hdf5lib_H5_H5Pget_1chunk_1opts
 {
     unsigned   opts = 0;
 
-    if (H5Pget_chunk_opts((hid_t)dcpl_id, opts) < 0)
+    if (H5Pget_chunk_opts((hid_t)dcpl_id, &opts) < 0)
         h5libraryError(env);
 
     return (jint)opts;

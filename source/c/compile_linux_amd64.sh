@@ -200,9 +200,10 @@ gcc \
 cp -avf libjhdf5_export_sharedlink.so libjhdf5.so
 
 if [ -f libjhdf5.so ]; then
+  rm -rf "$JHDF5_DEPLOY_DIR"
   mkdir -p "$JHDF5_DEPLOY_DIR"
   find "$BDIR/bin" -maxdepth 1 \( -type f -o -type l \) \
-    \( -name "libhdf5*.so*" -o -name "libhdf5*.so" \) \
+    \( -name "libhdf5.so*" -o -name "libhdf5_java.so*" \) \
     -exec cp -Ppf {} "$JHDF5_DEPLOY_DIR/" \;
 
   BUILT_PLUGIN_COUNT=0

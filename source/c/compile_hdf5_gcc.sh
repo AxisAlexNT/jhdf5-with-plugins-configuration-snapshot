@@ -328,6 +328,21 @@ if [[ ! -z $CMAKE_HDF5 ]]; then
 		if [[ -f "$plugin_cmake" ]]; then
 			perl -0pi -e 's/# LZ4 filter\nif \(NOT MINGW\).*?\nendif \(\)\n\n# LZF filter/# LZ4 filter\nif (NOT MINGW)\n  FILTER_OPTION (LZ4)\nelse ()\n  set (ENABLE_LZ4 OFF CACHE BOOL "" FORCE)\nendif ()\n\n# LZF filter/s' "$plugin_cmake"
 		fi
+		local blosc_tgz="${plugin_root}/libs/c-blosc.tar.gz"
+		if [[ -f "$blosc_tgz" ]]; then
+			local blosc_tmp
+			blosc_tmp="$(mktemp -d)"
+			tar -xzf "$blosc_tgz" -C "$blosc_tmp"
+			while IFS= read -r zutil_file; do
+				perl -0pi -e 's/^[ \t]*#[ \t]*define[ \t]+fdopen\(fd,mode\)[ \t]+NULL[ \t]*\/\*[ \t]*No fdopen\(\)[ \t]*\*\/[ \t]*$/\/\* fdopen is provided by supported macOS SDKs. \*\//mg' "$zutil_file"
+			done < <(find "$blosc_tmp" -type f -name zutil.h -print)
+			local blosc_root
+			blosc_root="$(find "$blosc_tmp" -mindepth 1 -maxdepth 1 -type d | sed -n '1p')"
+			if [[ -n "$blosc_root" ]]; then
+				tar -C "$blosc_tmp" -czf "$blosc_tgz" "$(basename "$blosc_root")"
+			fi
+			rm -rf "$blosc_tmp"
+		fi
 	}
 	if [[ -f "../hdf5_plugins-release-1_10_11.zip" ]]; then
 		unzip -q "../hdf5_plugins-release-1_10_11.zip" -d "$PLUGIN_TMPDIR"

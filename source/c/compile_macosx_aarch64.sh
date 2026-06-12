@@ -80,10 +80,11 @@ gcc \
     > >(tee -a jhdf5.stdout.log) 2> >(tee -a jhdf5.stderr.log >&2)
 
 DEPLOY_DIR="../../../libs/native/jhdf5/aarch64-Mac OS X"
+rm -rf "$DEPLOY_DIR"
 mkdir -p "$DEPLOY_DIR"
 
 find "$BDIR" \( -type f -o -type l \) \
-  \( -name "libhdf5*.dylib" -o -name "libh5*.dylib" -o -name "libblosc*.dylib" \) \
+  \( -name "libhdf5.dylib" -o -name "libhdf5.[0-9]*.dylib" -o -name "libhdf5_java*.dylib" -o -name "libh5*.dylib" -o -name "libblosc*.dylib" \) \
   -exec cp -Ppf {} "$DEPLOY_DIR/" \;
 while IFS= read -r plugin_lib; do
   cp -Ppf "$plugin_lib" "$DEPLOY_DIR/$(basename "${plugin_lib%.so}.dylib")"

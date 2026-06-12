@@ -408,11 +408,14 @@ foreach ($variant in $Variants) {
   }
 
   $deployDir = Join-Path $DeployRoot "amd64-Windows-$outputVariant"
+  if (Test-Path $deployDir) {
+    Remove-Item $deployDir -Recurse -Force
+  }
   New-Item -ItemType Directory -Force -Path $deployDir | Out-Null
   $copied = @()
   foreach ($dir in $binaryDirs) {
     $dlls = Get-ChildItem $dir -Filter "*.dll" -File -ErrorAction SilentlyContinue |
-      Where-Object { $_.Name -like "*hdf5*.dll" -or $_.Name -like "hdf5*.dll" -or $_.Name -like "jhdf5*.dll" }
+      Where-Object { $_.Name -in @("hdf5.dll", "hdf5_java.dll", "jhdf5.dll") }
     foreach ($dll in $dlls) {
       Copy-Item $dll.FullName -Destination $deployDir -Force
       $copied += $dll.Name
