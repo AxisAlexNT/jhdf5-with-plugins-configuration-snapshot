@@ -13,7 +13,7 @@ on:
         required: false
         default: false
       release_tag:
-        description: "Release tag to create/update with packaged assets after a successful manual run. Leave empty to skip release upload."
+        description: "Release tag to create/update with packaged assets after a successful manual run. Leave empty to skip release upload for manual runs."
         required: false
         default: "release-artifacts"
       release_name:
@@ -30,7 +30,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: jhdf5-native-${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.native_cache_version || 'v2' }}
+  group: jhdf5-native-${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || (github.event_name == 'push' && 'release-artifacts' || github.ref) }}-${{ github.event_name == 'workflow_dispatch' && inputs.native_cache_version || 'v2' }}
   cancel-in-progress: false
 
 env:
@@ -41,6 +41,8 @@ env:
   JHDF5_NATIVE_CACHE_SCHEMA: filters-v2
   JHDF5_NATIVE_CACHE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.native_cache_version || 'v2' }}
   JHDF5_FORCE_NATIVE_REBUILD: ${{ github.event_name == 'workflow_dispatch' && inputs.force_native_rebuild || false }}
+  JHDF5_DEFAULT_RELEASE_TAG: release-artifacts
+  JHDF5_DEFAULT_RELEASE_NAME: Pre-built binaries for HiCT_JVM
 
 jobs:
   linux-amd64:
@@ -776,14 +778,14 @@ jobs:
           path: build/libs
           key: jhdf5-packaged-jar-v4-${{ env.JHDF5_NATIVE_CACHE_SCHEMA }}-${{ env.JHDF5_NATIVE_CACHE_VERSION }}-hdf5-${{ env.HDF5_VERSION }}
       - name: Publish jar to GitHub Release
-        if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '') }}
+        if: ${{ github.event_name == 'push' || github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '') }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.event.release.tag_name }}
-          name: ${{ github.event_name == 'workflow_dispatch' && inputs.release_name || github.event.release.name }}
-          target_commitish: ${{ github.sha }}
-          prerelease: ${{ github.event_name == 'workflow_dispatch' }}
-          make_latest: ${{ github.event_name == 'workflow_dispatch' && 'false' || 'legacy' }}
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || (github.event_name == 'release' && github.event.release.tag_name || env.JHDF5_DEFAULT_RELEASE_TAG) }}
+          name: ${{ github.event_name == 'workflow_dispatch' && inputs.release_name || (github.event_name == 'release' && github.event.release.name || env.JHDF5_DEFAULT_RELEASE_NAME) }}
+          target_commitish: ${{ github.event_name == 'release' && github.event.release.target_commitish || github.sha }}
+          prerelease: ${{ github.event_name != 'release' }}
+          make_latest: ${{ github.event_name == 'release' && 'legacy' || 'false' }}
           overwrite_files: true
           files: |
             build/libs/*.jar
